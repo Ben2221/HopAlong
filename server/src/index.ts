@@ -79,11 +79,9 @@ setupSocket(io);
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    if (process.env.NODE_ENV !== 'production') {
-      server.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-      });
-    }
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
   })
   .catch((error) => {
     console.error('Error connecting to MongoDB:', error.message);
