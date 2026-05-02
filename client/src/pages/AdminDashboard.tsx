@@ -47,7 +47,21 @@ const SettingsTab = ({ initialSettings, onSave }: { initialSettings: GlobalSetti
   const [local, setLocal] = useState(initialSettings);
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-8 pb-12">
+      <div className="flex items-center justify-between border-b border-gray-100 pb-6">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">System Configuration</h3>
+          <p className="text-xs text-gray-400">Update pricing and global announcements</p>
+        </div>
+        <button 
+          onClick={() => onSave(local)}
+          className="px-6 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center gap-2"
+        >
+          <Icon icon="mdi:content-save-check" className="text-lg text-yellow-400" />
+          Save Changes
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-xs font-bold text-gray-400 uppercase">Base Fare (₹)</label>
@@ -112,14 +126,6 @@ const SettingsTab = ({ initialSettings, onSave }: { initialSettings: GlobalSetti
         </div>
       </div>
 
-      <div className="pt-6 border-t border-gray-100">
-        <button 
-          onClick={() => onSave(local)}
-          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
-        >
-          <Icon icon="mdi:content-save-check" className="text-xl text-yellow-400" />
-          Save All Settings
-        </button>
       </div>
     </div>
   );
