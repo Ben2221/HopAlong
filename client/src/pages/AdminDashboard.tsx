@@ -48,7 +48,6 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [rides, setRides] = useState<any[]>([]);
-  const [settings, setSettings] = useState<GlobalSettings | null>(null);
   const [localSettings, setLocalSettings] = useState<GlobalSettings | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +76,6 @@ const AdminDashboard = () => {
         setStats(statsRes.data.data);
         setUsers(usersRes.data.data);
         setRides(ridesRes.data.data);
-        setSettings(settingsRes.data.data);
         setLocalSettings(settingsRes.data.data);
         setMessages(messagesRes.data.data);
       } catch (error) {
@@ -94,7 +92,7 @@ const AdminDashboard = () => {
     if (!localSettings) return;
     try {
       const response = await api.patch('/admin/settings', localSettings);
-      setSettings(response.data.data);
+      setLocalSettings(response.data.data);
       alert("Settings saved successfully!");
     } catch (error: any) {
       alert(error.response?.data?.message || "Failed to save settings");
