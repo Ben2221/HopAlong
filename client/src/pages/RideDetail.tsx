@@ -120,7 +120,7 @@ const RideDetail = () => {
       setDriverLocation(data);
     });
 
-    socket.on("rider_joined", (data: any) => {
+    socket.on("rider_joined", () => {
       // Re-fetch ride to get updated list of riders
       fetchRide();
     });

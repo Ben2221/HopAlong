@@ -7,6 +7,9 @@ interface User {
   name: string;
   email: string;
   role: 'rider' | 'driver';
+  pseudonym: string;
+  isAnonymous: boolean;
+  walletBalance: number;
 }
 
 interface Credentials {

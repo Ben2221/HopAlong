@@ -8,7 +8,6 @@ import Button from "../components/Button";
 import Divider from "../components/Divider";
 import { Link, useNavigate } from "react-router-dom";
 import { useLogin } from "../hooks/useAuth";
-import { useAuthStore } from "../store/authStore";
 
 interface Errors {
   email?: string;
@@ -25,10 +24,9 @@ const Login = () => {
 
   const [errors, setErrors] = useState<Errors>({});
   const navigate = useNavigate();
-  const { login: storeLogin } = useAuthStore();
 
   // Use our fixed auth hook
-  const { login, loading, error } = useLogin();
+  const { login, loading } = useLogin();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
