@@ -125,8 +125,6 @@ const SettingsTab = ({ initialSettings, onSave }: { initialSettings: GlobalSetti
           ))}
         </div>
       </div>
-
-      </div>
     </div>
   );
 };
