@@ -49,6 +49,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [rides, setRides] = useState<any[]>([]);
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
+  const [localSettings, setLocalSettings] = useState<GlobalSettings | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'users' | 'rides' | 'support' | 'settings'>('users');
@@ -77,6 +78,7 @@ const AdminDashboard = () => {
         setUsers(usersRes.data.data);
         setRides(ridesRes.data.data);
         setSettings(settingsRes.data.data);
+        setLocalSettings(settingsRes.data.data);
         setMessages(messagesRes.data.data);
       } catch (error) {
         console.error("Failed to fetch admin data", error);
@@ -87,6 +89,17 @@ const AdminDashboard = () => {
 
     fetchData();
   }, [user, token, navigate]);
+
+  const handleSaveSettings = async () => {
+    if (!localSettings) return;
+    try {
+      const response = await api.patch('/admin/settings', localSettings);
+      setSettings(response.data.data);
+      alert("Settings saved successfully!");
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to save settings");
+    }
+  };
 
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
@@ -139,14 +152,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateSettings = async (newSettings: Partial<GlobalSettings>) => {
-    try {
-      const response = await api.patch('/admin/settings', newSettings);
-      setSettings(response.data.data);
-    } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update settings");
-    }
-  };
 
   const handleUpdateMessageStatus = async (msgId: string, status: string) => {
     try {
@@ -386,15 +391,15 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'settings' && settings && (
+            {activeTab === 'settings' && localSettings && (
               <div className="max-w-2xl space-y-8">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-400 uppercase">Base Fare (₹)</label>
                     <input 
                       type="number" 
-                      value={settings.baseFare}
-                      onChange={(e) => handleUpdateSettings({ baseFare: parseFloat(e.target.value) })}
+                      value={localSettings.baseFare}
+                      onChange={(e) => setLocalSettings({ ...localSettings, baseFare: parseFloat(e.target.value) })}
                       className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
                     />
                   </div>
@@ -402,8 +407,8 @@ const AdminDashboard = () => {
                     <label className="text-xs font-bold text-gray-400 uppercase">Price per KM (₹)</label>
                     <input 
                       type="number" 
-                      value={settings.pricePerKm}
-                      onChange={(e) => handleUpdateSettings({ pricePerKm: parseFloat(e.target.value) })}
+                      value={localSettings.pricePerKm}
+                      onChange={(e) => setLocalSettings({ ...localSettings, pricePerKm: parseFloat(e.target.value) })}
                       className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
                     />
                   </div>
@@ -416,16 +421,22 @@ const AdminDashboard = () => {
                       <p className="text-xs text-gray-400">Show a message to all students on their dashboard</p>
                     </div>
                     <button 
-                      onClick={() => handleUpdateSettings({ broadcastBanner: { ...settings.broadcastBanner, isActive: !settings.broadcastBanner.isActive } })}
-                      className={`w-14 h-7 rounded-full transition-colors relative ${settings.broadcastBanner.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
+                      onClick={() => setLocalSettings({ 
+                        ...localSettings, 
+                        broadcastBanner: { ...localSettings.broadcastBanner, isActive: !localSettings.broadcastBanner.isActive } 
+                      })}
+                      className={`w-14 h-7 rounded-full transition-colors relative ${localSettings.broadcastBanner.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
                     >
-                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${settings.broadcastBanner.isActive ? 'left-8' : 'left-1'}`} />
+                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${localSettings.broadcastBanner.isActive ? 'left-8' : 'left-1'}`} />
                     </button>
                   </div>
 
                   <textarea 
-                    value={settings.broadcastBanner.message}
-                    onChange={(e) => handleUpdateSettings({ broadcastBanner: { ...settings.broadcastBanner, message: e.target.value } })}
+                    value={localSettings.broadcastBanner.message}
+                    onChange={(e) => setLocalSettings({ 
+                      ...localSettings, 
+                      broadcastBanner: { ...localSettings.broadcastBanner, message: e.target.value } 
+                    })}
                     placeholder="Enter announcement message..."
                     className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none h-24 focus:ring-2 focus:ring-yellow-400"
                   />
@@ -434,13 +445,26 @@ const AdminDashboard = () => {
                     {['info', 'warning', 'alert'].map(type => (
                       <button 
                         key={type}
-                        onClick={() => handleUpdateSettings({ broadcastBanner: { ...settings.broadcastBanner, type: type as any } })}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${settings.broadcastBanner.type === type ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        onClick={() => setLocalSettings({ 
+                          ...localSettings, 
+                          broadcastBanner: { ...localSettings.broadcastBanner, type: type as any } 
+                        })}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${localSettings.broadcastBanner.type === type ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                       >
                         {type}
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <button 
+                    onClick={handleSaveSettings}
+                    className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
+                  >
+                    <Icon icon="mdi:content-save-check" className="text-xl text-yellow-400" />
+                    Save All Settings
+                  </button>
                 </div>
               </div>
             )}
