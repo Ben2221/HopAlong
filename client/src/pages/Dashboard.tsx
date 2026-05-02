@@ -50,7 +50,7 @@ const Dashboard = () => {
     };
 
     const fetchAvailableRides = async () => {
-      if (user?.role === 'rider') {
+      if (user?.role === 'rider' || user?.role === 'admin') {
         try {
           const response = await api.get('/rides/available');
           setAvailableRides(response.data);
@@ -76,7 +76,7 @@ const Dashboard = () => {
       });
     }
 
-    if (user.role === 'rider') {
+    if (user.role === 'rider' || user.role === 'admin') {
       socket.on('ride_accepted', (data) => {
         navigate(`/rides/${data.rideId}`);
       });
@@ -188,7 +188,7 @@ const Dashboard = () => {
         )}
 
         {/* RIDER UI */}
-        {user.role === 'rider' && (
+        {(user.role === 'rider' || user.role === 'admin') && (
           <div className="space-y-6 mb-8">
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/create-ride" className="flex-1">

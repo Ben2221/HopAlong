@@ -10,20 +10,21 @@ import { useNavigate } from "react-router-dom";
 const Profile = () => {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
-  const [walletAmount, setWalletAmount] = useState(0);
+  const [walletAmount, setWalletAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
   const addMoney = async () => {
-    if (walletAmount <= 0) return;
+    const amount = Number(walletAmount);
+    if (isNaN(amount) || amount <= 0) return;
     setIsLoading(true);
     try {
-      const response = await api.post('/user/wallet/add', { amount: walletAmount });
+      const response = await api.post('/user/wallet/add', { amount });
       if (user) {
         setUser({ ...user, walletBalance: response.data.walletBalance });
       }
-      setSuccess(`Added ₹${walletAmount} to your wallet!`);
-      setWalletAmount(0);
+      setSuccess(`Added ₹${amount} to your wallet!`);
+      setWalletAmount("");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Failed to add money", err);
@@ -120,14 +121,14 @@ const Profile = () => {
                     <input 
                       type="number" 
                       value={walletAmount}
-                      onChange={(e) => setWalletAmount(Number(e.target.value))}
+                      onChange={(e) => setWalletAmount(e.target.value)}
                       className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none"
                       placeholder="Amount"
                     />
                     <Button 
                       size="sm" 
                       onClick={addMoney} 
-                      disabled={isLoading || walletAmount <= 0}
+                      disabled={isLoading || !walletAmount || Number(walletAmount) <= 0}
                     >
                       Add
                     </Button>
