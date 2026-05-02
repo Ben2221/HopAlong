@@ -150,17 +150,24 @@ const Dashboard = () => {
         {/* DRIVER UI */}
         {user.role === 'driver' && (
           <div className="mb-8">
-             <div className="bg-white p-6 rounded-lg shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-bold">Driver Status</h3>
-                  <p className="text-gray-500">You are currently {isOnline ? 'Online' : 'Offline'}</p>
-                </div>
-                 <button 
-                  onClick={toggleOnlineStatus}
-                  className={`w-full sm:w-auto px-6 py-3 rounded-full font-bold text-white transition-colors ${isOnline ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
-                >
-                  {isOnline ? 'Go Offline' : 'Go Online'}
-                </button>
+             <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+               <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${isOnline ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <Icon icon={isOnline ? "mdi:car-connected" : "mdi:car-off"} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Driver Status</h3>
+                      <p className="text-sm text-gray-500">You are currently <span className={`font-bold ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>{isOnline ? 'Online' : 'Offline'}</span></p>
+                    </div>
+                  </div>
+                   <button 
+                    onClick={toggleOnlineStatus}
+                    className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 ${isOnline ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-green-500 hover:bg-green-600 shadow-green-200'}`}
+                  >
+                    {isOnline ? 'Go Offline' : 'Go Online'}
+                  </button>
+               </div>
              </div>
 
              {incomingRequest && (
@@ -188,19 +195,24 @@ const Dashboard = () => {
                 <Button
                   fullWidth
                   icon="mdi:car-plus"
-                  className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600"
+                  className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 h-16 text-lg rounded-2xl shadow-yellow-100"
                 >
                   Create Public Ride
                 </Button>
               </Link>
               
-              <div className="bg-white p-2 rounded-lg shadow flex items-center justify-between sm:justify-start gap-3 px-4 w-full sm:w-auto">
-                <span className="text-sm font-medium text-gray-600">Privacy Mode</span>
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between sm:justify-start gap-4 px-6 w-full sm:w-auto">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isAnonymous ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <Icon icon={isAnonymous ? "mdi:incognito" : "mdi:account-eye"} className="text-xl" />
+                  </div>
+                  <span className="text-sm font-bold text-gray-700">Privacy Mode</span>
+                </div>
                 <button 
                   onClick={togglePrivacy}
                   className={`w-12 h-6 rounded-full transition-colors relative ${isAnonymous ? 'bg-yellow-400' : 'bg-gray-300'}`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${isAnonymous ? 'left-7' : 'left-1'}`} />
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${isAnonymous ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>
             </div>

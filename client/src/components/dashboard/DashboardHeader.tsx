@@ -47,7 +47,18 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {role === "driver" ? "🚗 Driver Dashboard" : "🛺 Rider Dashboard"}
+              <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                role === 'admin' ? 'bg-red-500/20 text-red-100 border border-red-500/30' :
+                role === 'driver' ? 'bg-green-500/20 text-green-100 border border-green-500/30' :
+                'bg-blue-500/20 text-blue-100 border border-blue-500/30'
+              }`}>
+                <Icon icon={
+                  role === 'admin' ? 'mdi:shield-check' :
+                  role === 'driver' ? 'mdi:car' : 
+                  'mdi:account'
+                } />
+                {role} Mode
+              </div>
               <span className="opacity-50">|</span>
               <span className="font-bold flex items-center gap-1">
                 <Icon icon="mdi:wallet" /> ₹{walletBalance?.toFixed(2) || '0.00'}
