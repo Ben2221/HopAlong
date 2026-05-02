@@ -45,3 +45,20 @@ export const getAllRides = async (req: Request, res: Response) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Prevent admin from deleting themselves
+    if (id === (req as any).user._id.toString()) {
+      res.status(400).json({ status: 'error', message: 'You cannot delete your own admin account.' });
+      return;
+    }
+
+    await User.findByIdAndDelete(id);
+    res.status(200).json({ status: 'success', message: 'User deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};

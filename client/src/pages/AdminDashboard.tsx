@@ -49,6 +49,20 @@ const AdminDashboard = () => {
     fetchData();
   }, [user, token, navigate]);
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      setUsers(users.filter(u => u._id !== userId));
+      // Refresh stats
+      const statsRes = await api.get('/admin/stats');
+      setStats(statsRes.data.data);
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to delete user");
+    }
+  };
+
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
@@ -135,7 +149,7 @@ const AdminDashboard = () => {
                       <th className="px-4 py-3">Email</th>
                       <th className="px-4 py-3">Role</th>
                       <th className="px-4 py-3">Balance</th>
-                      <th className="px-4 py-3">Joined</th>
+                      <th className="px-4 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -149,7 +163,17 @@ const AdminDashboard = () => {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-gray-900 font-bold">₹{u.walletBalance.toFixed(2)}</td>
-                        <td className="px-4 py-4 text-sm text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-4">
+                          {u._id !== user?.id && (
+                            <button 
+                              onClick={() => handleDeleteUser(u._id)}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                              title="Delete User"
+                            >
+                              <Icon icon="mdi:trash-can" className="text-xl" />
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
