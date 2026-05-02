@@ -150,14 +150,14 @@ const Dashboard = () => {
         {/* DRIVER UI */}
         {user.role === 'driver' && (
           <div className="mb-8">
-             <div className="bg-white p-6 rounded-lg shadow flex items-center justify-between">
+             <div className="bg-white p-6 rounded-lg shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold">Driver Status</h3>
                   <p className="text-gray-500">You are currently {isOnline ? 'Online' : 'Offline'}</p>
                 </div>
-                <button 
+                 <button 
                   onClick={toggleOnlineStatus}
-                  className={`px-6 py-3 rounded-full font-bold text-white transition-colors ${isOnline ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+                  className={`w-full sm:w-auto px-6 py-3 rounded-full font-bold text-white transition-colors ${isOnline ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
                 >
                   {isOnline ? 'Go Offline' : 'Go Online'}
                 </button>
@@ -183,7 +183,7 @@ const Dashboard = () => {
         {/* RIDER UI */}
         {user.role === 'rider' && (
           <div className="space-y-6 mb-8">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/create-ride" className="flex-1">
                 <Button
                   fullWidth
@@ -194,7 +194,7 @@ const Dashboard = () => {
                 </Button>
               </Link>
               
-              <div className="bg-white p-2 rounded-lg shadow flex items-center gap-3 px-4">
+              <div className="bg-white p-2 rounded-lg shadow flex items-center justify-between sm:justify-start gap-3 px-4 w-full sm:w-auto">
                 <span className="text-sm font-medium text-gray-600">Privacy Mode</span>
                 <button 
                   onClick={togglePrivacy}
@@ -248,12 +248,12 @@ const Dashboard = () => {
             <ul className="divide-y divide-gray-200">
               {rides.map(ride => (
                 <li key={ride._id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                       <p className="font-medium text-gray-900">{ride.pickupLocation.address} → {ride.dropoffLocation.address}</p>
                       <p className="text-sm text-gray-500">{new Date(ride.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right w-full sm:w-auto flex sm:block justify-between items-center">
                       <p className="font-bold text-gray-900">${ride.fare}</p>
                       <span className={`inline-block px-2 py-1 text-xs rounded-full ${ride.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                         {ride.status}

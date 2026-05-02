@@ -197,7 +197,7 @@ const RideDetail = () => {
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 100 }}
       >
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
             <button
               onClick={() => navigate("/dashboard")}
@@ -223,11 +223,11 @@ const RideDetail = () => {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
         {/* Status Progress Bar */}
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <h2 className="font-bold text-gray-700 mb-4 text-sm uppercase tracking-wide">
             Ride Progress
           </h2>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1">
             {STATUS_STEPS.map((step, i) => (
               <div key={step} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
@@ -244,7 +244,7 @@ const RideDetail = () => {
                       i + 1
                     )}
                   </div>
-                  <span className="text-xs mt-1 capitalize text-gray-500">
+                    <span className="text-[10px] sm:text-xs mt-1 capitalize text-gray-500 text-center">
                     {step}
                   </span>
                 </div>

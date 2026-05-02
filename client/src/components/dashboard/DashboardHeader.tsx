@@ -23,7 +23,7 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
     <div className="bg-gradient-to-r from-yellow-400 to-amber-500 pt-12 pb-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          className="flex justify-between items-center"
+          className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -34,7 +34,7 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
               <span className="text-white font-bold text-lg">HopAlong</span>
             </div>
             <motion.h1
-              className="text-3xl font-bold text-white mb-1"
+              className="text-2xl sm:text-3xl font-bold text-white mb-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
