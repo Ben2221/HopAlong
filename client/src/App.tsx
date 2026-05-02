@@ -45,7 +45,7 @@ function Navbar() {
           whileHover={{ scale: 1.05 }}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-          <Icon icon="mdi:car-sports" className="text-yellow-400 text-3xl" />
+          <img src="/logo.png" alt="HopAlong Logo" className="w-8 h-8 object-contain" />
           <span className="font-bold text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text">
             HopAlong
           </span>
@@ -474,7 +474,7 @@ function Footer() {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <Icon icon="mdi:car-sports" className="text-yellow-400 text-3xl" />
+              <img src="/logo.png" alt="HopAlong Logo" className="w-8 h-8 object-contain" />
               <span className="font-bold text-2xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text">
                 HopAlong
               </span>

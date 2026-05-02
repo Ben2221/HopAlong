@@ -29,7 +29,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     await user.save();
-    
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'fallback_secret',
@@ -109,13 +109,13 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
     // Generate token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    
+
     // Hash and set to user record
     user.resetPasswordToken = crypto
       .createHash('sha256')
       .update(resetToken)
       .digest('hex');
-    
+
     // Set expiry (1 hour)
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -132,7 +132,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
         html: getPasswordResetTemplate(resetUrl)
       });
 
-      res.status(200).json({ 
+      res.status(200).json({
         message: 'Password reset link sent to email',
         // In development, we return the link directly for convenience
         ...(process.env.NODE_ENV !== 'production' && { dev_reset_url: resetUrl })

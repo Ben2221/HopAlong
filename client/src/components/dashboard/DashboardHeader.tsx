@@ -30,7 +30,7 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
         >
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Icon icon="mdi:car-sports" className="text-white text-2xl" />
+              <img src="/logo.png" alt="HopAlong Logo" className="w-8 h-8 object-contain brightness-0 invert" />
               <span className="text-white font-bold text-lg">HopAlong</span>
             </div>
             <motion.h1

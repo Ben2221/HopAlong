@@ -24,19 +24,10 @@ export const sendEmail = async (options: {
       },
     });
   } else {
-    // Development: Auto-generate Ethereal account
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
+    // Development: Mock the email sending instead of using Ethereal to prevent hanging
     console.log('--- DEVELOPMENT EMAIL MODE ---');
-    console.log('Test Account:', testAccount.user);
+    console.log('Mocking email sending to avoid hanging...');
+    return { messageId: 'mock-id' };
   }
 
   const mailOptions = {

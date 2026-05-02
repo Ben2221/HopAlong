@@ -26,6 +26,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ridesh
 // CORS Configuration for Production
 const allowedOrigins = [
   'http://localhost:5173',
+  'https://hopalong.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
