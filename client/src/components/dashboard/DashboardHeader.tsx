@@ -56,6 +56,18 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
           </div>
 
           <div className="flex items-center gap-3">
+            {role === 'admin' && (
+              <Link to="/admin">
+                <motion.button
+                  className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-md transition-colors border border-yellow-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Icon icon="mdi:shield-account" className="text-lg" />
+                  Admin Panel
+                </motion.button>
+              </Link>
+            )}
             <Link to="/profile">
               <motion.div
                 className="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer border-2 border-transparent hover:border-yellow-200"

@@ -4,7 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password?: string;
-  role: 'rider' | 'driver';
+  role: 'rider' | 'driver' | 'admin';
   isAnonymous: boolean;
   pseudonym: string;
   walletBalance: number;
@@ -22,7 +22,7 @@ const userSchema = new Schema<IUser>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['rider', 'driver'], required: true },
+  role: { type: String, enum: ['rider', 'driver', 'admin'], required: true },
   isAnonymous: { type: Boolean, default: false },
   pseudonym: { type: String, required: true },
   walletBalance: { type: Number, default: 1000 }, // Starting balance for demo

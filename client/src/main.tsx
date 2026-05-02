@@ -14,6 +14,7 @@ import App from "./App.tsx";
 import ChatPage from "./pages/ChatPage.tsx";
 import RideDetail from "./pages/RideDetail.tsx";
 import Profile from "./pages/Profile.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
 import SafetyGuidelines from "./pages/Guidelines.tsx";
 import TermsOfService from "./pages/Terms.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
@@ -86,6 +87,14 @@ if (rootElement) {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

