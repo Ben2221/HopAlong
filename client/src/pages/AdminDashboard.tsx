@@ -88,10 +88,9 @@ const AdminDashboard = () => {
     fetchData();
   }, [user, token, navigate]);
 
-  const handleSaveSettings = async () => {
-    if (!localSettings) return;
+  const handleSaveSettings = async (newSettings: GlobalSettings) => {
     try {
-      const response = await api.patch('/admin/settings', localSettings);
+      const response = await api.patch('/admin/settings', newSettings);
       setLocalSettings(response.data.data);
       alert("Settings saved successfully!");
     } catch (error: any) {
@@ -390,82 +389,14 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'settings' && localSettings && (
-              <div className="max-w-2xl space-y-8">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase">Base Fare (₹)</label>
-                    <input 
-                      type="number" 
-                      value={localSettings.baseFare}
-                      onChange={(e) => setLocalSettings({ ...localSettings, baseFare: parseFloat(e.target.value) })}
-                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase">Price per KM (₹)</label>
-                    <input 
-                      type="number" 
-                      value={localSettings.pricePerKm}
-                      onChange={(e) => setLocalSettings({ ...localSettings, pricePerKm: parseFloat(e.target.value) })}
-                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4 border-t border-gray-100 pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-gray-800">Broadcast Banner</h4>
-                      <p className="text-xs text-gray-400">Show a message to all students on their dashboard</p>
-                    </div>
-                    <button 
-                      onClick={() => setLocalSettings({ 
-                        ...localSettings, 
-                        broadcastBanner: { ...localSettings.broadcastBanner, isActive: !localSettings.broadcastBanner.isActive } 
-                      })}
-                      className={`w-14 h-7 rounded-full transition-colors relative ${localSettings.broadcastBanner.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
-                    >
-                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${localSettings.broadcastBanner.isActive ? 'left-8' : 'left-1'}`} />
-                    </button>
-                  </div>
-
-                  <textarea 
-                    value={localSettings.broadcastBanner.message}
-                    onChange={(e) => setLocalSettings({ 
-                      ...localSettings, 
-                      broadcastBanner: { ...localSettings.broadcastBanner, message: e.target.value } 
-                    })}
-                    placeholder="Enter announcement message..."
-                    className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none h-24 focus:ring-2 focus:ring-yellow-400"
-                  />
-
-                  <div className="flex gap-4">
-                    {['info', 'warning', 'alert'].map(type => (
-                      <button 
-                        key={type}
-                        onClick={() => setLocalSettings({ 
-                          ...localSettings, 
-                          broadcastBanner: { ...localSettings.broadcastBanner, type: type as any } 
-                        })}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${localSettings.broadcastBanner.type === type ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-gray-100">
-                  <button 
-                    onClick={handleSaveSettings}
-                    className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
-                  >
-                    <Icon icon="mdi:content-save-check" className="text-xl text-yellow-400" />
-                    Save All Settings
-                  </button>
-                </div>
-              </div>
+              <SettingsTab 
+                initialSettings={localSettings} 
+                onSave={handleSaveSettings} 
+              />
             )}
+          </div>
+        </div>
+      </div>
           </div>
         </div>
       </div>
@@ -522,3 +453,167 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+const SettingsTab = ({ initialSettings, onSave }: { initialSettings: GlobalSettings, onSave: (settings: GlobalSettings) => void }) => {
+  const [local, setLocal] = useState(initialSettings);
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <div className="grid grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-400 uppercase">Base Fare (₹)</label>
+          <input 
+            type="number" 
+            value={local.baseFare}
+            onChange={(e) => setLocal({ ...local, baseFare: parseFloat(e.target.value) })}
+            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-400 uppercase">Price per KM (₹)</label>
+          <input 
+            type="number" 
+            value={local.pricePerKm}
+            onChange={(e) => setLocal({ ...local, pricePerKm: parseFloat(e.target.value) })}
+            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 border-t border-gray-100 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-bold text-gray-800">Broadcast Banner</h4>
+            <p className="text-xs text-gray-400">Show a message to all students on their dashboard</p>
+          </div>
+          <button 
+            onClick={() => setLocal({ 
+              ...local, 
+              broadcastBanner: { ...local.broadcastBanner, isActive: !local.broadcastBanner.isActive } 
+            })}
+            className={}
+          >
+            <div className={} />
+          </button>
+        </div>
+
+        <textarea 
+          value={local.broadcastBanner.message}
+          onChange={(e) => setLocal({ 
+            ...local, 
+            broadcastBanner: { ...local.broadcastBanner, message: e.target.value } 
+          })}
+          placeholder="Enter announcement message..."
+          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none h-24 focus:ring-2 focus:ring-yellow-400"
+        />
+
+        <div className="flex gap-4">
+          {['info', 'warning', 'alert'].map(type => (
+            <button 
+              key={type}
+              onClick={() => setLocal({ 
+                ...local, 
+                broadcastBanner: { ...local.broadcastBanner, type: type as any } 
+              })}
+              className={}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-6 border-t border-gray-100">
+        <button 
+          onClick={() => onSave(local)}
+          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
+        >
+          <Icon icon="mdi:content-save-check" className="text-xl text-yellow-400" />
+          Save All Settings
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const SettingsTab = ({ initialSettings, onSave }: { initialSettings: GlobalSettings, onSave: (settings: GlobalSettings) => void }) => {
+  const [local, setLocal] = useState(initialSettings);
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <div className="grid grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-400 uppercase">Base Fare (₹)</label>
+          <input 
+            type="number" 
+            value={local.baseFare}
+            onChange={(e) => setLocal({ ...local, baseFare: parseFloat(e.target.value) })}
+            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-400 uppercase">Price per KM (₹)</label>
+          <input 
+            type="number" 
+            value={local.pricePerKm}
+            onChange={(e) => setLocal({ ...local, pricePerKm: parseFloat(e.target.value) })}
+            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 border-t border-gray-100 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-bold text-gray-800">Broadcast Banner</h4>
+            <p className="text-xs text-gray-400">Show a message to all students on their dashboard</p>
+          </div>
+          <button 
+            onClick={() => setLocal({ 
+              ...local, 
+              broadcastBanner: { ...local.broadcastBanner, isActive: !local.broadcastBanner.isActive } 
+            })}
+            className={`w-14 h-7 rounded-full transition-colors relative ${local.broadcastBanner.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${local.broadcastBanner.isActive ? 'left-8' : 'left-1'}`} />
+          </button>
+        </div>
+
+        <textarea 
+          value={local.broadcastBanner.message}
+          onChange={(e) => setLocal({ 
+            ...local, 
+            broadcastBanner: { ...local.broadcastBanner, message: e.target.value } 
+          })}
+          placeholder="Enter announcement message..."
+          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none h-24 focus:ring-2 focus:ring-yellow-400"
+        />
+
+        <div className="flex gap-4">
+          {['info', 'warning', 'alert'].map(type => (
+            <button 
+              key={type}
+              onClick={() => setLocal({ 
+                ...local, 
+                broadcastBanner: { ...local.broadcastBanner, type: type as any } 
+              })}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${local.broadcastBanner.type === type ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-6 border-t border-gray-100">
+        <button 
+          onClick={() => onSave(local)}
+          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
+        >
+          <Icon icon="mdi:content-save-check" className="text-xl text-yellow-400" />
+          Save All Settings
+        </button>
+      </div>
+    </div>
+  );
+};
