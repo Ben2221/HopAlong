@@ -9,7 +9,9 @@ import {
   getGlobalSettings, 
   updateGlobalSettings,
   getContactMessages,
-  updateContactStatus
+  updateContactStatus,
+  updateUserRole,
+  cancelRideAdmin
 } from '../controllers/adminController';
 import { authenticate } from '../utils/authMiddleware';
 import { adminOnly } from '../utils/adminMiddleware';

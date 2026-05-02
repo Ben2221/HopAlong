@@ -16,7 +16,7 @@ interface UserData {
   _id: string;
   name: string;
   email: string;
-  role: string;
+  role: 'rider' | 'driver' | 'admin';
   walletBalance: number;
   status: 'active' | 'suspended' | 'banned';
   createdAt: string;
@@ -51,7 +51,7 @@ const AdminDashboard = () => {
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'rides' | 'settings' | 'support'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'rides' | 'support' | 'settings'>('users');
   
   // Wallet adjustment modal state
   const [adjustingUser, setAdjustingUser] = useState<UserData | null>(null);
@@ -107,6 +107,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await api.patch(`/admin/users/${userId}/role`, { role: newRole });
+      setUsers(users.map(u => u._id === userId ? { ...u, role: newRole as any } : u));
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to update role");
+    }
+  };
+
   const handleAdjustWallet = async () => {
     if (!adjustingUser || !adjustAmount) return;
     try {
@@ -117,6 +126,16 @@ const AdminDashboard = () => {
       setAdjustAmount("");
     } catch (error: any) {
       alert(error.response?.data?.message || "Failed to adjust wallet");
+    }
+  };
+
+  const handleCancelRide = async (rideId: string) => {
+    if (!window.confirm("Are you sure you want to intercept and cancel this ride?")) return;
+    try {
+      await api.delete(`/admin/rides/${rideId}`);
+      setRides(rides.map(r => r._id === rideId ? { ...r, status: 'cancelled' } : r));
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to cancel ride");
     }
   };
 
@@ -233,7 +252,16 @@ const AdminDashboard = () => {
                           <p className="text-xs text-gray-400">{u.email}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="capitalize text-sm font-medium">{u.role}</span>
+                          <select 
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                            className="text-sm font-medium outline-none bg-transparent cursor-pointer hover:text-yellow-600"
+                            disabled={u._id === user?.id}
+                          >
+                            <option value="rider">Rider</option>
+                            <option value="driver">Driver</option>
+                            <option value="admin">Admin</option>
+                          </select>
                         </td>
                         <td className="px-4 py-4">
                           <select 
@@ -282,7 +310,7 @@ const AdminDashboard = () => {
                       <th className="px-4 py-3">Route</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Fare</th>
-                      <th className="px-4 py-3">Riders</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -293,13 +321,23 @@ const AdminDashboard = () => {
                           <p className="text-xs text-gray-400">to {r.dropoffLocation.address}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${r.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${
+                            r.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                            r.status === 'cancelled' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'
+                          }`}>
                             {r.status}
                           </span>
                         </td>
                         <td className="px-4 py-4 font-bold">₹{r.fare}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">
-                          {r.riders?.length || 0} students
+                        <td className="px-4 py-4 text-right">
+                          {['pending', 'accepted', 'ongoing'].includes(r.status) && (
+                            <button 
+                              onClick={() => handleCancelRide(r._id)}
+                              className="text-red-400 hover:text-red-600 font-bold text-xs flex items-center gap-1 ml-auto"
+                            >
+                              <Icon icon="mdi:cancel" /> Cancel
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

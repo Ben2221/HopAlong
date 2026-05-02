@@ -6,6 +6,7 @@ import api from "../services/api";
 import { useEffect, useState } from "react";
 import { initSocket, getSocket, disconnectSocket } from "../services/socket";
 import { Icon } from "@iconify/react";
+import { motion } from "motion/react";
 
 interface Ride {
   _id: string;
