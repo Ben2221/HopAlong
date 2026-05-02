@@ -8,6 +8,11 @@ export interface IUser extends Document {
   isAnonymous: boolean;
   pseudonym: string;
   walletBalance: number;
+  status: 'active' | 'suspended' | 'banned';
+  socialLinks?: {
+    twitter?: string;
+    github?: string;
+  };
   currentLocation?: {
     type: 'Point';
     coordinates: [number, number]; // [longitude, latitude]
@@ -26,6 +31,11 @@ const userSchema = new Schema<IUser>({
   isAnonymous: { type: Boolean, default: false },
   pseudonym: { type: String, required: true },
   walletBalance: { type: Number, default: 1000 }, // Starting balance for demo
+  status: { type: String, enum: ['active', 'suspended', 'banned'], default: 'active' },
+  socialLinks: {
+    twitter: { type: String },
+    github: { type: String },
+  },
   currentLocation: {
     type: {
       type: String,

@@ -51,13 +51,120 @@ export const deleteUser = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     // Prevent admin from deleting themselves
-    if (id === (req as any).user._id.toString()) {
+    if (id === (req as any).user.userId) {
       res.status(400).json({ status: 'error', message: 'You cannot delete your own admin account.' });
       return;
     }
 
     await User.findByIdAndDelete(id);
     res.status(200).json({ status: 'success', message: 'User deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateUserStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (id === (req as any).user.userId) {
+      res.status(400).json({ status: 'error', message: 'You cannot change your own status.' });
+      return;
+    }
+
+    const user = await User.findByIdAndUpdate(id, { status }, { new: true });
+    res.status(200).json({ status: 'success', data: user });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateUserWallet = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount, action } = req.body; // action: 'add' | 'set'
+    
+    const user = await User.findById(id);
+    if (!user) {
+      res.status(404).json({ status: 'error', message: 'User not found' });
+      return;
+    }
+
+    if (action === 'set') {
+      user.walletBalance = amount;
+    } else {
+      user.walletBalance += amount;
+    }
+
+    await user.save();
+    res.status(200).json({ status: 'success', data: user });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+import { GlobalSettings } from '../models/GlobalSettings';
+
+export const getGlobalSettings = async (req: Request, res: Response) => {
+  try {
+    let settings = await GlobalSettings.findOne();
+    if (!settings) {
+      settings = await GlobalSettings.create({});
+    }
+    res.status(200).json({ status: 'success', data: settings });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateGlobalSettings = async (req: Request, res: Response) => {
+  try {
+    const settings = await GlobalSettings.findOneAndUpdate({}, req.body, { new: true, upsert: true });
+    res.status(200).json({ status: 'success', data: settings });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+import { Contact } from '../models/Contact';
+
+export const getContactMessages = async (req: Request, res: Response) => {
+  try {
+    const messages = await Contact.find().sort({ createdAt: -1 });
+    res.status(200).json({ status: 'success', data: messages });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateContactStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const message = await Contact.findByIdAndUpdate(id, { status }, { new: true });
+    res.status(200).json({ status: 'success', data: message });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateUserRole = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+    res.status(200).json({ status: 'success', data: user });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const cancelRideAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const ride = await Ride.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true });
+    res.status(200).json({ status: 'success', message: 'Ride cancelled by admin', data: ride });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
   }

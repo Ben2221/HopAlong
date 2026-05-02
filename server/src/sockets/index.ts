@@ -35,7 +35,21 @@ export const setupSocket = (io: Server) => {
     socket.on('driver_status', async (data: { isOnline: boolean }) => {
       if (role !== 'driver') return;
       await User.findByIdAndUpdate(userId, { isOnline: data.isOnline });
-      if (!data.isOnline) {
+      
+      if (data.isOnline) {
+        // Find all pending rides and notify this specific driver
+        const pendingRides = await Ride.find({ status: 'pending' });
+        pendingRides.forEach(ride => {
+          socket.emit('new_ride_request', {
+            rideId: ride._id,
+            pickup: { address: ride.pickupLocation.address },
+            dropoff: { address: ride.dropoffLocation.address },
+            fare: ride.fare,
+            riderId: ride.riders[0],
+            riderName: "A waiting student" // We can improve this with a lookup later
+          });
+        });
+      } else {
         driversLocation.delete(userId);
       }
       console.log(`Driver ${userId} status: ${data.isOnline}`);
@@ -94,9 +108,7 @@ export const setupSocket = (io: Server) => {
         const onlineDrivers = await User.find({ role: 'driver', isOnline: true });
         
         if (onlineDrivers.length === 0) {
-          socket.emit('ride_request_failed', { message: 'No drivers available' });
-          await Ride.findByIdAndUpdate(newRide._id, { status: 'cancelled' });
-          return;
+          socket.emit('searching_for_drivers', { message: 'No drivers online. We will notify you when one joins.' });
         }
 
         // Just notify all online drivers (simplification of matching)

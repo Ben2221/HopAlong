@@ -68,6 +68,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (user.status !== 'active') {
+      res.status(403).json({ 
+        message: `Your account has been ${user.status}. Please contact support.` 
+      });
+      return;
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(400).json({ message: 'Invalid credentials' });

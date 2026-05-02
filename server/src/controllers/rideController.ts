@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { AuthRequest } from '../utils/authMiddleware';
 import { Ride } from '../models/Ride';
-import { calculateDistance, calculateFare } from '../utils/haversine';
+import { calculateDistance } from '../utils/haversine';
+import { GlobalSettings } from '../models/GlobalSettings';
 
 export const getHistory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -37,7 +38,13 @@ export const estimateFare = async (req: AuthRequest, res: Response): Promise<voi
       dropoffLocation.lng
     );
 
-    const fare = calculateFare(distance);
+    // Fetch dynamic rates from settings
+    let settings = await GlobalSettings.findOne();
+    if (!settings) {
+      settings = await GlobalSettings.create({});
+    }
+
+    const fare = Number((settings.baseFare + distance * settings.pricePerKm).toFixed(2));
 
     res.json({ distance, fare });
   } catch (error) {

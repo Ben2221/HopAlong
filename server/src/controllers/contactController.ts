@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { sendEmail } from '../utils/emailService';
+import { Contact } from '../models/Contact';
 
 export const sendContactEmail = async (req: Request, res: Response) => {
   const { name, email, message } = req.body;
@@ -12,6 +13,9 @@ export const sendContactEmail = async (req: Request, res: Response) => {
   }
 
   try {
+    // Save to database for admin panel
+    await Contact.create({ name, email, message });
+
     // Send email to the administrator (You)
     await sendEmail({
       email: 'bensavio2221@gmail.com', // Your personal email to receive requests

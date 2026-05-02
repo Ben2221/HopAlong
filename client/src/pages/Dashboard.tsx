@@ -32,6 +32,8 @@ const Dashboard = () => {
   const [availableRides, setAvailableRides] = useState<any[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(user?.isAnonymous || false);
 
+  const [publicSettings, setPublicSettings] = useState<any>(null);
+
   useEffect(() => {
     if (!user || !token) {
       navigate("/login");
@@ -60,8 +62,18 @@ const Dashboard = () => {
       }
     };
 
+    const fetchPublicSettings = async () => {
+      try {
+        const response = await api.get('/settings/public');
+        setPublicSettings(response.data.data);
+      } catch (err) {
+        console.error("Failed to fetch public settings", err);
+      }
+    };
+
     fetchRides();
     fetchAvailableRides();
+    fetchPublicSettings();
 
     // Setup Socket
     const socket = initSocket(token);
@@ -147,6 +159,29 @@ const Dashboard = () => {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         
+        {/* Broadcast Banner */}
+        {publicSettings?.broadcastBanner?.isActive && (
+          <motion.div 
+            className={`mb-6 p-4 rounded-2xl flex items-center gap-4 shadow-sm border-l-8 ${
+              publicSettings.broadcastBanner.type === 'alert' ? 'bg-red-50 border-red-500 text-red-800' :
+              publicSettings.broadcastBanner.type === 'warning' ? 'bg-amber-50 border-amber-500 text-amber-800' :
+              'bg-blue-50 border-blue-500 text-blue-800'
+            }`}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <Icon 
+              icon={
+                publicSettings.broadcastBanner.type === 'alert' ? 'mdi:alert-circle' :
+                publicSettings.broadcastBanner.type === 'warning' ? 'mdi:alert' :
+                'mdi:information'
+              } 
+              className="text-2xl shrink-0" 
+            />
+            <p className="font-bold text-sm md:text-base">{publicSettings.broadcastBanner.message}</p>
+          </motion.div>
+        )}
+
         {/* DRIVER UI */}
         {user.role === 'driver' && (
           <div className="mb-8">

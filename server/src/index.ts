@@ -52,6 +52,21 @@ app.use('/api/user', userRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 
+import { GlobalSettings } from './models/GlobalSettings';
+app.get('/api/settings/public', async (req, res) => {
+  try {
+    const settings = await GlobalSettings.findOne();
+    res.json({ 
+      status: 'success', 
+      data: { 
+        broadcastBanner: settings?.broadcastBanner || { isActive: false, message: '', type: 'info' } 
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error' });
+  }
+});
+
 // Autocomplete route
 app.post('/api/autocomplete', async (req, res) => {
   try {
