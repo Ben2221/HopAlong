@@ -178,12 +178,6 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [user, token, navigate]);
 
-  const handleRefresh = async () => {
-    setIsLoading(true);
-    // This will trigger the useEffect because of how we set up the state, 
-    // but we can just call an internal refresh function too.
-    window.location.reload(); 
-  };
 
   const handleSaveSettings = async (newSettings: GlobalSettings) => {
     try {
