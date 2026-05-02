@@ -4,7 +4,6 @@ import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
 import { Icon } from "@iconify/react";
 import { motion } from "motion/react";
-import Button from "../components/Button";
 
 interface Stats {
   totalUsers: number;

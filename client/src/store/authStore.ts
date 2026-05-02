@@ -5,7 +5,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'rider' | 'driver';
+  role: 'rider' | 'driver' | 'admin';
   pseudonym: string;
   isAnonymous: boolean;
   walletBalance: number;
