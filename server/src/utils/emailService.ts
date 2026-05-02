@@ -34,7 +34,7 @@ export const sendEmail = async (options: {
   }
 
   const mailOptions = {
-    from: `"HopAlong" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'support@hopalong.iiitk'}>`,
+    from: `"HopAlong" <${process.env.SMTP_FROM || 'hopalong@benser.tech'}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
