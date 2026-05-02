@@ -172,7 +172,18 @@ const AdminDashboard = () => {
     };
 
     fetchData();
+
+    // Live Heartbeat: Refresh data every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, [user, token, navigate]);
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    // This will trigger the useEffect because of how we set up the state, 
+    // but we can just call an internal refresh function too.
+    window.location.reload(); 
+  };
 
   const handleSaveSettings = async (newSettings: GlobalSettings) => {
     try {
@@ -253,15 +264,30 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gray-900 text-white py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <button onClick={() => navigate('/dashboard')} className="text-gray-400 hover:text-white flex items-center gap-1 mb-4 text-sm">
-            <Icon icon="mdi:arrow-left" /> Back to App
-          </button>
-          <h1 className="text-4xl font-bold flex items-center gap-3">
-            <Icon icon="mdi:shield-check" className="text-yellow-400" />
-            Admin Command Center
-          </h1>
-        </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <button onClick={() => navigate('/dashboard')} className="text-gray-400 hover:text-white flex items-center gap-1 text-sm">
+                  <Icon icon="mdi:arrow-left" /> Back to App
+                </button>
+                <span className="text-gray-700">|</span>
+                <button onClick={() => window.location.reload()} className="text-yellow-400 hover:text-yellow-300 flex items-center gap-1 text-sm font-bold">
+                  <Icon icon="mdi:refresh" /> Refresh Live Data
+                </button>
+              </div>
+              <h1 className="text-4xl font-bold flex items-center gap-3">
+                <Icon icon="mdi:shield-check" className="text-yellow-400" />
+                Admin Command Center
+              </h1>
+            </div>
+            <div className="hidden md:block text-right">
+              <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">System Status</p>
+              <div className="flex items-center gap-2 text-green-400 font-bold">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Live Monitoring Active
+              </div>
+            </div>
+          </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 -mt-8">
