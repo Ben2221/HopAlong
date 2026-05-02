@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import rideRoutes from './routes/rides';
 import userRoutes from './routes/user';
+import contactRoutes from './routes/contact';
 import { setupSocket } from './sockets/index';
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Autocomplete route
 app.post('/api/autocomplete', async (req, res) => {

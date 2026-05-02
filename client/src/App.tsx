@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useAnimation } from "motion/react";
 import { Icon } from "@iconify/react";
 import "./App.css";
 import GetStartedButton from "./components/GetStarted";
+import { API_DOMAIN } from "./env";
 
 function App() {
   const controls = useAnimation();
@@ -410,6 +411,37 @@ function Community() {
 }
 
 function Contact() {
+  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setStatus({ type: null, message: "" });
+
+    try {
+      const response = await fetch(`${API_DOMAIN}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus({ type: 'success', message: "Message sent! We'll get back to you soon." });
+        setFormData({ name: "", email: "", message: "" });
+      } else {
+        setStatus({ type: 'error', message: data.message || "Something went wrong." });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: "Failed to connect to server." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section id="contact" className="py-24 bg-white">
       <div className="container mx-auto px-4">
@@ -427,7 +459,7 @@ function Contact() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-bold uppercase">Email Us</p>
-                  <p className="font-bold">support@hopalong.iiitk</p>
+                  <p className="font-bold">hopalong@benser.tech</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -443,21 +475,50 @@ function Contact() {
           </div>
 
           <div className="md:w-1/2 p-12 bg-white">
-            <form className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {status.type && (
+                <div className={`p-4 rounded-xl text-sm font-medium ${status.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {status.message}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Name</label>
-                <input type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="Your name" />
+                <input 
+                  type="text" 
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" 
+                  placeholder="Your name" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                <input type="email" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="Your IIITK email" />
+                <input 
+                  type="email" 
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" 
+                  placeholder="Your IIITK email" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
-                <textarea className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none h-32" placeholder="How can we help?"></textarea>
+                <textarea 
+                  required
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none h-32" 
+                  placeholder="How can we help?"
+                ></textarea>
               </div>
-              <button className="w-full py-4 bg-yellow-400 text-gray-900 font-bold rounded-xl shadow-lg hover:bg-yellow-500 transition-colors">
-                Send Message
+              <button 
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-yellow-400 text-gray-900 font-bold rounded-xl shadow-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Sending..." : "Send Message"}
               </button>
             </form>
           </div>
