@@ -52,7 +52,6 @@ const Profile = () => {
       <DashboardHeader 
         name={user.name} 
         role={user.role} 
-        pseudonym={user.pseudonym}
         walletBalance={user.walletBalance}
       />
 
