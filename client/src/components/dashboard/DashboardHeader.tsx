@@ -29,10 +29,10 @@ const DashboardHeader = ({ name, role, walletBalance }: DashboardHeaderProps) =>
         >
           <div className="flex items-center gap-3 overflow-hidden">
             <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                <img src="/logo.svg" alt="HopAlong Logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                <img src="/logo.svg" alt="HopAlong Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
               </div>
-              <span className="text-white font-black text-lg sm:text-xl tracking-tight hidden xs:block">HopAlong</span>
+              <span className="text-white font-black text-lg sm:text-2xl tracking-tight hidden xs:block">HopAlong</span>
             </Link>
             <div className="h-6 w-[1px] bg-white/20 hidden sm:block mx-1" />
             <div className="overflow-hidden">

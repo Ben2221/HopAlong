@@ -46,7 +46,7 @@ function Navbar() {
           whileHover={{ scale: 1.05 }}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-          <img src="/logo.svg" alt="HopAlong Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-md shadow-sm" />
+          <img src="/logo.svg" alt="HopAlong Logo" className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-xl shadow-sm bg-white p-1" />
           <span className="font-black text-lg sm:text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text hidden xs:block">
             HopAlong
           </span>

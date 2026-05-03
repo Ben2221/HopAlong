@@ -34,8 +34,8 @@ const AuthLayout = ({ children, title, subtitle }: AuthLayoutProps) => {
               void navigate("/");
             }}
           >
-            <img src="/logo.svg" alt="HopAlong Logo" className="w-8 h-8 object-contain rounded-md shadow-sm" />
-            <span className="font-bold text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text">
+            <img src="/logo.svg" alt="HopAlong Logo" className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-xl shadow-sm bg-white p-1" />
+            <span className="font-bold text-xl sm:text-2xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text">
               HopAlong
             </span>
           </motion.button>
