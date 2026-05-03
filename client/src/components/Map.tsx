@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { LatLngExpression, Icon, LatLngBounds } from "leaflet";
 import { useRouteStore } from "../store/routeStore";
@@ -129,6 +129,17 @@ const Map = () => {
             {to?.formattedAddress}
           </Popup>
         </Marker>
+      )}
+
+      {/* Route Line */}
+      {fromPosition && toPosition && (
+        <Polyline 
+          positions={[fromPosition, toPosition]} 
+          color="#FBBF24" 
+          weight={5} 
+          opacity={0.8}
+          dashArray="10, 10"
+        />
       )}
 
       {/* Default marker if no from/to */}

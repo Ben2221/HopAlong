@@ -63,7 +63,7 @@ function Navbar() {
             <motion.a
               key={i}
               href={`#${item.id}`}
-              className="text-gray-600 hover:text-yellow-500 transition-colors font-bold text-sm uppercase tracking-wider"
+              className="text-gray-600 hover:text-yellow-500 transition-colors font-bold text-sm tracking-wider"
               whileHover={{ y: -2 }}
             >
               {item.name}

@@ -78,7 +78,7 @@ export const setupSocket = (io: Server) => {
 
     // Handle Rider requesting a ride
     socket.on('request_ride', async (data: { pickup: any, dropoff: any, fare: number, isPublic?: boolean, maxRiders?: number }) => {
-      if (role !== 'rider') return;
+      if (role !== 'rider' && role !== 'admin') return;
       
       try {
         // Create pending ride in DB

@@ -89,9 +89,6 @@ const CreateRide = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full flex-1 flex flex-col">
         {/* Header section for the page */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg">
-            <Icon icon="mdi:car-plus" className="text-amber-900 text-xl" />
-          </div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create a New Journey</h2>
         </div>
 

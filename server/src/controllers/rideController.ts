@@ -10,7 +10,7 @@ export const getHistory = async (req: AuthRequest, res: Response): Promise<void>
     const role = req.user.role;
 
     let rides;
-    if (role === 'rider') {
+    if (role === 'rider' || role === 'admin') {
       rides = await Ride.find({ riders: userId }).sort({ createdAt: -1 }).populate('driver riders', 'name pseudonym isAnonymous');
     } else {
       rides = await Ride.find({ driver: userId }).sort({ createdAt: -1 }).populate('riders', 'name pseudonym isAnonymous');
