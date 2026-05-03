@@ -195,24 +195,55 @@ export const setupSocket = (io: Server) => {
       
       try {
         const ride = await Ride.findById(data.rideId);
-        if (!ride) return;
+        if (!ride) {
+          console.log(`[Socket] Ride ${data.rideId} not found`);
+          return;
+        }
 
+        // Prevent double charging if already completed
+        if (ride.status === 'completed' && data.status === 'completed') {
+          console.log(`[Socket] Ride ${data.rideId} already completed. Skipping deduction.`);
+          return;
+        }
+
+        const oldStatus = ride.status;
         ride.status = data.status as any;
         await ride.save();
 
-        // If completed, deduct fare from riders
-        if (data.status === 'completed') {
-          const splitFare = ride.fare / ride.riders.length;
-          await User.updateMany(
-            { _id: { $in: ride.riders as any } },
-            { $inc: { walletBalance: -splitFare } }
-          );
+        console.log(`[Socket] Ride ${data.rideId} status updated: ${oldStatus} -> ${data.status}`);
+
+        // If completed, deduct fare from riders and pay driver
+        if (data.status === 'completed' && oldStatus !== 'completed') {
+          const riderCount = ride.riders.length;
+          if (riderCount > 0) {
+            const splitFare = Number((ride.fare / riderCount).toFixed(2));
+            
+            console.log(`[Socket] Completing ride ${data.rideId}. Fare: ${ride.fare}, Split: ${splitFare}, Riders: ${riderCount}`);
+
+            // Deduct from riders
+            const deductionResult = await User.updateMany(
+              { _id: { $in: ride.riders as any } },
+              { $inc: { walletBalance: -splitFare } }
+            );
+            console.log(`[Socket] Riders deduction result:`, deductionResult);
+
+            // Pay driver (total fare)
+            if (ride.driver) {
+              const driverPaymentResult = await User.findByIdAndUpdate(
+                ride.driver,
+                { $inc: { walletBalance: ride.fare } }
+              );
+              console.log(`[Socket] Driver payment result for ${ride.driver}:`, !!driverPaymentResult);
+            }
+          } else {
+            console.warn(`[Socket] Ride ${data.rideId} completed but has no riders!`);
+          }
         }
 
         const roomName = `ride_${data.rideId}`;
         io.to(roomName).emit('ride_status_updated', { status: data.status });
       } catch (err) {
-        console.error(err);
+        console.error('[Socket] Error in update_ride_status:', err);
       }
     });
 
