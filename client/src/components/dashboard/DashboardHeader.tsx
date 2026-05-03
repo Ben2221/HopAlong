@@ -6,11 +6,10 @@ import { Icon } from "@iconify/react";
 interface DashboardHeaderProps {
   name: string;
   role?: string;
-  pseudonym?: string;
   walletBalance?: number;
 }
 
-const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHeaderProps) => {
+const DashboardHeader = ({ name, role, walletBalance }: DashboardHeaderProps) => {
   const { logout } = useLogout();
   const navigate = useNavigate();
 

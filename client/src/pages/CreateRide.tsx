@@ -83,7 +83,6 @@ const CreateRide = () => {
       <DashboardHeader 
         name={user.name} 
         role={user.role} 
-        pseudonym={user.pseudonym}
         walletBalance={user.walletBalance}
       />
 
