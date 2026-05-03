@@ -20,84 +20,84 @@ const DashboardHeader = ({ name, role, pseudonym, walletBalance }: DashboardHead
   };
 
   return (
-    <div className="bg-gradient-to-r from-yellow-400 to-amber-500 pt-12 pb-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-r from-yellow-400 to-amber-500 pt-6 pb-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+          className="flex flex-col sm:flex-row justify-between items-center gap-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <img src="/logo.svg" alt="HopAlong Logo" className="w-8 h-8 object-contain rounded-md shadow-sm" />
-              <span className="text-white font-bold text-lg">HopAlong</span>
-            </div>
-            <motion.h1
-              className="text-2xl sm:text-3xl font-bold text-white mb-1"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              Welcome, {name.split(" ")[0]}! {pseudonym && <span className="text-sm font-normal opacity-70">({pseudonym})</span>}
-            </motion.h1>
-            <motion.p
-              className="text-yellow-100 text-sm flex items-center gap-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                role === 'admin' ? 'bg-red-500/20 text-red-100 border border-red-500/30' :
-                role === 'driver' ? 'bg-green-500/20 text-green-100 border border-green-500/30' :
-                'bg-blue-500/20 text-blue-100 border border-blue-500/30'
-              }`}>
-                <Icon icon={
-                  role === 'admin' ? 'mdi:shield-check' :
-                  role === 'driver' ? 'mdi:car' : 
-                  'mdi:account'
-                } />
-                {role} Mode
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                <img src="/logo.svg" alt="HopAlong Logo" className="w-6 h-6 object-contain" />
               </div>
-              <span className="opacity-50">|</span>
-              <span className="font-bold flex items-center gap-1">
-                <Icon icon="mdi:wallet" /> ₹{walletBalance?.toFixed(2) || '0.00'}
-              </span>
-            </motion.p>
+              <span className="text-white font-black text-xl tracking-tight hidden sm:block">HopAlong</span>
+            </Link>
+            <div className="h-8 w-[1px] bg-white/20 hidden sm:block mx-2" />
+            <div>
+              <motion.h1
+                className="text-lg font-bold text-white flex items-center gap-2 leading-none"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                Hi, {name.split(" ")[0]}!
+                {pseudonym && <span className="text-xs font-normal opacity-70">({pseudonym})</span>}
+              </motion.h1>
+              <div className="flex items-center gap-2 mt-1">
+                 <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${
+                  role === 'admin' ? 'bg-red-500 text-white' :
+                  role === 'driver' ? 'bg-green-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}>
+                  <Icon icon={
+                    role === 'admin' ? 'mdi:shield-check' :
+                    role === 'driver' ? 'mdi:car' : 
+                    'mdi:account'
+                  } />
+                  {role}
+                </div>
+                <span className="text-[10px] text-yellow-100 font-bold flex items-center gap-0.5">
+                  <Icon icon="mdi:wallet" className="text-sm" /> ₹{walletBalance?.toFixed(0) || '0'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-black/10 p-1.5 rounded-2xl backdrop-blur-sm">
             {role === 'admin' && (
               <Link to="/admin">
                 <motion.button
-                  className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-md transition-colors border border-yellow-500"
+                  className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-500 text-amber-900 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Icon icon="mdi:shield-account" className="text-lg" />
-                  Admin Panel
+                  Admin
                 </motion.button>
               </Link>
             )}
             <Link to="/profile">
               <motion.div
-                className="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer border-2 border-transparent hover:border-yellow-200"
+                className="h-9 w-9 bg-white rounded-xl flex items-center justify-center shadow-md cursor-pointer border-2 border-transparent hover:border-yellow-200"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <span className="text-yellow-500 text-xl font-bold">
+                <span className="text-yellow-500 text-sm font-black">
                   {name.charAt(0).toUpperCase()}
                 </span>
               </motion.div>
             </Link>
             <motion.button
               onClick={handleLogout}
-              className="flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              title="Logout"
             >
               <Icon icon="mdi:logout" className="text-lg" />
-              Logout
             </motion.button>
           </div>
         </motion.div>
