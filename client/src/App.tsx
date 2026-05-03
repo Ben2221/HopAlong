@@ -35,24 +35,24 @@ function App() {
 function Navbar() {
   return (
     <motion.nav
-      className="fixed top-0 left-0 right-0 bg-white shadow-md z-50"
+      className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-sm z-50"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
     >
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
         <motion.div
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer shrink-0"
           whileHover={{ scale: 1.05 }}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-          <img src="/logo.svg" alt="HopAlong Logo" className="w-8 h-8 object-contain rounded-md shadow-sm" />
-          <span className="font-bold text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text">
+          <img src="/logo.svg" alt="HopAlong Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-md shadow-sm" />
+          <span className="font-black text-lg sm:text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text hidden xs:block">
             HopAlong
           </span>
         </motion.div>
 
-        <div className="hidden md:flex gap-6">
+        <div className="hidden lg:flex gap-6">
           {[
             { name: "About", id: "about" },
             { name: "Features", id: "features" },
@@ -63,16 +63,18 @@ function Navbar() {
             <motion.a
               key={i}
               href={`#${item.id}`}
-              className="text-gray-700 hover:text-yellow-400 transition-colors font-medium"
-              whileHover={{ scale: 1.1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 10 }}
+              className="text-gray-600 hover:text-yellow-500 transition-colors font-bold text-sm uppercase tracking-wider"
+              whileHover={{ y: -2 }}
             >
               {item.name}
             </motion.a>
           ))}
         </div>
 
-        <GetStartedButton />
+        <div className="flex items-center gap-2 sm:gap-4">
+           <Link to="/login" className="text-sm font-black text-gray-500 hover:text-yellow-500 transition-colors px-2 py-1 hidden sm:block">Sign In</Link>
+           <GetStartedButton />
+        </div>
       </div>
     </motion.nav>
   );

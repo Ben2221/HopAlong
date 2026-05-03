@@ -8,6 +8,7 @@ import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "motion/react";
 import StatsCard from "../components/dashboard/StatsCard";
 import ServiceCard from "../components/dashboard/ServiceCard";
+import Map from "../components/Map";
 
 interface Ride {
   _id: string;
@@ -163,24 +164,22 @@ const Dashboard = () => {
         
         {/* Uber-Style Hero Section */}
         <section className="relative h-[300px] md:h-[400px] rounded-[32px] overflow-hidden shadow-2xl mb-8 group">
-          <img 
-            src="/assets/dashboard/hero_map.png" 
-            alt="City Map" 
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] group-hover:scale-110" 
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 z-0">
+            <Map />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none z-10" />
           
-          <div className="absolute inset-0 p-8 flex flex-col justify-end">
+          <div className="absolute inset-0 p-8 flex flex-col justify-end z-20">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-xl"
+              className="max-w-xl pointer-events-auto"
             >
               <h2 className="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">
                 Where are you <span className="text-yellow-400 underline decoration-yellow-400/30">hopping</span> to?
               </h2>
               
-              <div className="relative group/input">
+              <div className="relative group/input" onClick={(e) => e.stopPropagation()}>
                 <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
                   <Icon icon="mdi:magnify" className="text-2xl text-gray-400 group-focus-within/input:text-yellow-400 transition-colors" />
                 </div>
@@ -192,7 +191,14 @@ const Dashboard = () => {
                   className="w-full h-16 pl-14 pr-6 bg-white rounded-2xl shadow-2xl text-lg font-medium outline-none cursor-pointer hover:bg-gray-50 transition-all border-2 border-transparent focus:border-yellow-400"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                   <button className="bg-yellow-400 text-amber-900 px-6 py-2.5 rounded-xl font-black text-sm shadow-lg hover:bg-yellow-500 transition-colors">
+                   <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/create-ride');
+                    }}
+                    className="bg-yellow-400 text-amber-900 px-6 py-2.5 rounded-xl font-black text-sm shadow-lg hover:bg-yellow-500 transition-colors"
+                   >
                       Go
                    </button>
                 </div>

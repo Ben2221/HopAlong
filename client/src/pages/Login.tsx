@@ -163,6 +163,9 @@ const Login = () => {
                 Sign up
               </Link>
             </p>
+            <p className="text-xs text-gray-400 mt-4">
+              Blocked or suspended? <Link to="/contact" className="text-yellow-500 hover:underline">Contact Support</Link>
+            </p>
           </motion.div>
         </div>
       </form>

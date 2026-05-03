@@ -8,9 +8,12 @@ import PlaceAutocomplete from "../components/PlaceAutocomplete";
 import DateTimePicker from "../components/DateTimePicker";
 import Button from "../components/Button";
 import { useRouteStore } from "../store/routeStore";
+import DashboardHeader from "../components/dashboard/DashboardHeader";
+import { useAuthStore } from "../store/authStore";
 
 const CreateRide = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const resetRouteStore = useRouteStore((state) => state.resetOnPageLoad);
   const storeFrom = useRouteStore((state) => state.from);
   const storeTo = useRouteStore((state) => state.to);
@@ -73,34 +76,34 @@ const CreateRide = () => {
     navigate("/finding-ride");
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Top Section */}
-      <motion.header
-        className="bg-white shadow-md py-4 px-6 flex items-center justify-between flex-shrink-0"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, type: "spring" }}
-      >
-        <div className="flex items-center gap-4">
-          <motion.div
-            className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center"
-            whileHover={{ scale: 1.1 }}
-          >
-            <Icon icon="mdi:account" className="text-white text-2xl" />
-          </motion.div>
-          <h1 className="text-xl font-bold text-gray-800">Create Ride</h1>
-        </div>
-      </motion.header>
+  if (!user) return null;
 
-      {/* Map Section - Make it grow to fill available space */}
-      <div className="flex-1 flex min-h-[40vh]">
-        <Map />
-      </div>
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50 pb-10">
+      <DashboardHeader 
+        name={user.name} 
+        role={user.role} 
+        pseudonym={user.pseudonym}
+        walletBalance={user.walletBalance}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full flex-1 flex flex-col">
+        {/* Header section for the page */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg">
+            <Icon icon="mdi:car-plus" className="text-amber-900 text-xl" />
+          </div>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create a New Journey</h2>
+        </div>
+
+        {/* Map Section - Real interactive map */}
+        <div className="h-[300px] md:h-[400px] rounded-[32px] overflow-hidden shadow-2xl mb-8 relative">
+          <Map />
+        </div>
 
       {/* Ride Details Section - Fixed height */}
       <motion.div
-        className="bg-white shadow-lg p-6 flex-shrink-0"
+        className="bg-white shadow-2xl rounded-[32px] p-8 border border-gray-100"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.5 }}
