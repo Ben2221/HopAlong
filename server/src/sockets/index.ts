@@ -34,7 +34,7 @@ export const setupSocket = (io: Server) => {
     // Handle Driver going online/offline
     socket.on('driver_status', async (data: { isOnline: boolean }) => {
       if (role !== 'driver') return;
-      await User.findByIdAndUpdate(userId, { isOnline: data.isOnline });
+      await User.findByIdAndUpdate(userId, { isOnline: data.isOnline }, { new: true });
       
       if (data.isOnline) {
         // Find all pending rides and notify this specific driver
@@ -66,7 +66,7 @@ export const setupSocket = (io: Server) => {
           type: 'Point',
           coordinates: [data.lng, data.lat] // GeoJSON is [longitude, latitude]
         }
-      });
+      }, { new: true });
       
       // If the driver is in a ride room, broadcast location to the rider
       socket.rooms.forEach(room => {
@@ -231,7 +231,8 @@ export const setupSocket = (io: Server) => {
             if (ride.driver) {
               const driverPaymentResult = await User.findByIdAndUpdate(
                 ride.driver,
-                { $inc: { walletBalance: ride.fare } }
+                { $inc: { walletBalance: ride.fare } },
+                { new: true }
               );
               console.log(`[Socket] Driver payment result for ${ride.driver}:`, !!driverPaymentResult);
             }
@@ -252,7 +253,7 @@ export const setupSocket = (io: Server) => {
       connectedUsers.delete(userId);
       if (role === 'driver') {
         driversLocation.delete(userId);
-        await User.findByIdAndUpdate(userId, { isOnline: false });
+        await User.findByIdAndUpdate(userId, { isOnline: false }, { new: true });
       }
     });
   });

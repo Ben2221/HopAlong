@@ -7,9 +7,10 @@ interface DashboardHeaderProps {
   name: string;
   role?: string;
   walletBalance?: number;
+  pseudonym?: string;
 }
 
-const DashboardHeader = ({ name, role, walletBalance }: DashboardHeaderProps) => {
+const DashboardHeader = ({ name, role, walletBalance, pseudonym }: DashboardHeaderProps) => {
   const { logout } = useLogout();
   const navigate = useNavigate();
 
@@ -36,15 +37,22 @@ const DashboardHeader = ({ name, role, walletBalance }: DashboardHeaderProps) =>
             </Link>
             <div className="h-6 w-[1px] bg-white/20 hidden sm:block mx-1" />
             <div className="overflow-hidden">
-              <motion.h1
-                className="text-sm sm:text-lg font-bold text-white flex items-center gap-1 leading-none truncate"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                Hi, {name.split(" ")[0]}!
-              </motion.h1>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <motion.h1
+                  className="text-sm sm:text-lg font-bold text-white leading-none truncate"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  Hi, {name.split(" ")[0]}!
+                </motion.h1>
+                {pseudonym && (
+                  <span className="hidden md:inline-block text-[10px] font-black text-white/40 uppercase bg-white/10 px-2 py-0.5 rounded-full">
+                    aka {pseudonym}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
                  <div className={`px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ${
                   role === 'admin' ? 'bg-red-500 text-white' :
                   role === 'driver' ? 'bg-green-600 text-white' :
@@ -58,7 +66,7 @@ const DashboardHeader = ({ name, role, walletBalance }: DashboardHeaderProps) =>
                   <span className="hidden sm:inline">{role}</span>
                 </div>
                 <span className="text-[9px] sm:text-[10px] text-yellow-100 font-bold flex items-center gap-0.5 shrink-0">
-                  <Icon icon="mdi:wallet" className="text-xs sm:text-sm" /> ₹{walletBalance?.toFixed(0) || '0'}
+                  <Icon icon="mdi:wallet" className="text-xs sm:text-sm" /> ₹{walletBalance?.toFixed(2) || '0.00'}
                 </span>
               </div>
             </div>

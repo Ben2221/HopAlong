@@ -26,7 +26,7 @@ const Dashboard = () => {
   const [rides, setRides] = useState<Ride[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Driver specific state
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<any>(null);
@@ -85,7 +85,7 @@ const Dashboard = () => {
       socket.on('new_ride_request', (data) => {
         setIncomingRequest(data);
       });
-      
+
       socket.on('ride_accepted_success', (data) => {
         navigate(`/rides/${data.rideId}`);
       });
@@ -108,7 +108,7 @@ const Dashboard = () => {
       const newStatus = !isOnline;
       setIsOnline(newStatus);
       socket.emit('driver_status', { isOnline: newStatus });
-      
+
       if (newStatus && navigator.geolocation) {
         navigator.geolocation.watchPosition((position) => {
           socket.emit('driver_location', {
@@ -153,32 +153,32 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <DashboardHeader 
-        name={user.name} 
-        role={user.role} 
+      <DashboardHeader
+        name={user.name}
+        role={user.role}
         walletBalance={user.walletBalance}
+        pseudonym={user.pseudonym}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        
+
         {/* Broadcast Banner */}
         {publicSettings?.broadcastBanner?.isActive && (
-          <motion.div 
-            className={`mb-8 p-4 rounded-2xl flex items-center gap-4 shadow-sm border-l-8 ${
-              publicSettings.broadcastBanner.type === 'alert' ? 'bg-red-50 border-red-500 text-red-800' :
-              publicSettings.broadcastBanner.type === 'warning' ? 'bg-amber-50 border-amber-500 text-amber-800' :
-              'bg-blue-50 border-blue-500 text-blue-800'
-            }`}
+          <motion.div
+            className={`mb-8 p-4 rounded-2xl flex items-center gap-4 shadow-sm border-l-8 ${publicSettings.broadcastBanner.type === 'alert' ? 'bg-red-50 border-red-500 text-red-800' :
+                publicSettings.broadcastBanner.type === 'warning' ? 'bg-amber-50 border-amber-500 text-amber-800' :
+                  'bg-blue-50 border-blue-500 text-blue-800'
+              }`}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <Icon 
+            <Icon
               icon={
                 publicSettings.broadcastBanner.type === 'alert' ? 'mdi:alert-circle' :
-                publicSettings.broadcastBanner.type === 'warning' ? 'mdi:alert' :
-                'mdi:information'
-              } 
-              className="text-2xl shrink-0" 
+                  publicSettings.broadcastBanner.type === 'warning' ? 'mdi:alert' :
+                    'mdi:information'
+              }
+              className="text-2xl shrink-0"
             />
             <p className="font-bold text-sm md:text-base">{publicSettings.broadcastBanner.message}</p>
           </motion.div>
@@ -189,40 +189,40 @@ const Dashboard = () => {
           /* DRIVER VIEW */
           <div className="space-y-8">
             <section className="relative h-[250px] rounded-[32px] overflow-hidden shadow-2xl group bg-gray-900">
-               <div className="absolute inset-0 opacity-40">
-                  <Map />
-               </div>
-               <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/60 to-transparent" />
-               <div className="absolute inset-0 p-8 flex flex-col justify-center">
-                  <h2 className="text-3xl md:text-5xl font-black text-white mb-2">Driver Hub</h2>
-                  <p className="text-yellow-400 font-bold">Help students commute and earn points.</p>
-               </div>
+              <div className="absolute inset-0 opacity-40">
+                <Map />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/60 to-transparent" />
+              <div className="absolute inset-0 p-8 flex flex-col justify-center">
+                <h2 className="text-3xl md:text-5xl font-black text-white mb-2">Driver Hub</h2>
+                <p className="text-yellow-400 font-bold">Help students commute and earn points.</p>
+              </div>
             </section>
 
             <section>
-               <div className={`p-8 rounded-[32px] border transition-all ${isOnline ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 shadow-sm'}`}>
-                  <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                     <div className="flex items-center gap-5">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${isOnline ? 'bg-green-500 text-white animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
-                           <Icon icon={isOnline ? "mdi:car-connected" : "mdi:car-off"} />
-                        </div>
-                        <div>
-                           <h3 className="text-2xl font-black text-gray-900">Your Status: {isOnline ? 'ONLINE' : 'OFFLINE'}</h3>
-                           <p className="text-gray-500 font-medium">{isOnline ? 'Waiting for incoming requests...' : 'Ready to start? Go online now.'}</p>
-                        </div>
-                     </div>
-                     <button 
-                      onClick={toggleOnlineStatus}
-                      className={`w-full md:w-auto px-12 py-4 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 ${isOnline ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                    >
-                      {isOnline ? 'Go Offline' : 'Go Online'}
-                    </button>
+              <div className={`p-8 rounded-[32px] border transition-all ${isOnline ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 shadow-sm'}`}>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${isOnline ? 'bg-green-500 text-white animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
+                      <Icon icon={isOnline ? "mdi:car-connected" : "mdi:car-off"} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-gray-900">Your Status: {isOnline ? 'ONLINE' : 'OFFLINE'}</h3>
+                      <p className="text-gray-500 font-medium">{isOnline ? 'Waiting for incoming requests...' : 'Ready to start? Go online now.'}</p>
+                    </div>
                   </div>
-               </div>
+                  <button
+                    onClick={toggleOnlineStatus}
+                    className={`w-full md:w-auto px-12 py-4 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 ${isOnline ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                  >
+                    {isOnline ? 'Go Offline' : 'Go Online'}
+                  </button>
+                </div>
+              </div>
 
-               <AnimatePresence>
+              <AnimatePresence>
                 {incomingRequest && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
@@ -235,41 +235,41 @@ const Dashboard = () => {
                       <h4 className="text-2xl font-black uppercase tracking-tighter">New Ride Request!</h4>
                     </div>
                     <div className="grid md:grid-cols-2 gap-8 mb-8">
-                       <div className="space-y-4">
-                          <div className="flex gap-3">
-                             <Icon icon="mdi:circle-outline" className="text-yellow-400 mt-1" />
-                             <div>
-                                <p className="text-[10px] font-black text-yellow-400/50 uppercase">Pickup</p>
-                                <p className="text-lg font-bold">{incomingRequest.pickup.address}</p>
-                             </div>
+                      <div className="space-y-4">
+                        <div className="flex gap-3">
+                          <Icon icon="mdi:circle-outline" className="text-yellow-400 mt-1" />
+                          <div>
+                            <p className="text-[10px] font-black text-yellow-400/50 uppercase">Pickup</p>
+                            <p className="text-lg font-bold">{incomingRequest.pickup.address}</p>
                           </div>
-                          <div className="flex gap-3">
-                             <Icon icon="mdi:map-marker" className="text-red-400 mt-1" />
-                             <div>
-                                <p className="text-[10px] font-black text-yellow-400/50 uppercase">Dropoff</p>
-                                <p className="text-lg font-bold">{incomingRequest.dropoff.address}</p>
-                             </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <Icon icon="mdi:map-marker" className="text-red-400 mt-1" />
+                          <div>
+                            <p className="text-[10px] font-black text-yellow-400/50 uppercase">Dropoff</p>
+                            <p className="text-lg font-bold">{incomingRequest.dropoff.address}</p>
                           </div>
-                       </div>
-                       <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col justify-center">
-                          <p className="text-xs font-black text-yellow-400/50 uppercase">Est. Fare</p>
-                          <p className="text-4xl font-black text-yellow-400">₹{incomingRequest.fare}</p>
-                       </div>
+                        </div>
+                      </div>
+                      <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col justify-center">
+                        <p className="text-xs font-black text-yellow-400/50 uppercase">Est. Fare</p>
+                        <p className="text-4xl font-black text-yellow-400">₹{incomingRequest.fare}</p>
+                      </div>
                     </div>
                     <div className="flex gap-4">
-                       <button onClick={() => acceptRide(incomingRequest.rideId)} className="flex-1 bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-xl hover:bg-yellow-500 transition-all">Accept Ride</button>
-                       <button onClick={() => setIncomingRequest(null)} className="px-8 py-4 bg-white/10 rounded-2xl font-bold hover:bg-white/20 transition-all">Ignore</button>
+                      <button onClick={() => acceptRide(incomingRequest.rideId)} className="flex-1 bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-xl hover:bg-yellow-500 transition-all">Accept Ride</button>
+                      <button onClick={() => setIncomingRequest(null)} className="px-8 py-4 bg-white/10 rounded-2xl font-bold hover:bg-white/20 transition-all">Ignore</button>
                     </div>
                   </motion.div>
                 )}
-               </AnimatePresence>
+              </AnimatePresence>
             </section>
 
             <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <StatsCard label="Today's Trips" value={rides.filter(r => new Date(r.createdAt).toDateString() === new Date().toDateString()).length} icon="mdi:car-check" />
-               <StatsCard label="Earnings" value={`₹${rides.reduce((acc, r) => acc + r.fare, 0)}`} icon="mdi:cash" color="text-green-600" />
-               <StatsCard label="Rating" value="4.9" icon="mdi:star" color="text-yellow-500" />
-               <StatsCard label="Status" value={isOnline ? "Active" : "Idle"} icon="mdi:pulse" color={isOnline ? "text-green-500" : "text-gray-400"} />
+              <StatsCard label="Today's Trips" value={rides.filter(r => new Date(r.createdAt).toDateString() === new Date().toDateString()).length} icon="mdi:car-check" />
+              <StatsCard label="Earnings" value={`₹${rides.reduce((acc, r) => acc + r.fare, 0)}`} icon="mdi:cash" color="text-green-600" />
+              <StatsCard label="Rating" value="4.9" icon="mdi:star" color="text-yellow-500" />
+              <StatsCard label="Status" value={isOnline ? "Active" : "Idle"} icon="mdi:pulse" color={isOnline ? "text-green-500" : "text-gray-400"} />
             </section>
           </div>
         ) : (
@@ -287,15 +287,15 @@ const Dashboard = () => {
                     <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
                       <Icon icon="mdi:magnify" className="text-2xl text-gray-400 group-focus-within/input:text-yellow-400 transition-colors" />
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Enter destination..."
                       readOnly
                       onClick={() => navigate('/create-ride')}
                       className="w-full h-16 pl-14 pr-6 bg-white rounded-2xl shadow-2xl text-lg font-medium outline-none cursor-pointer hover:bg-gray-50 transition-all"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                       <button onClick={() => navigate('/create-ride')} className="bg-yellow-400 text-amber-900 px-8 py-3 rounded-xl font-black shadow-lg hover:bg-yellow-500 transition-colors">Start Hopping</button>
+                      <button onClick={() => navigate('/create-ride')} className="bg-yellow-400 text-amber-900 px-8 py-3 rounded-xl font-black shadow-lg hover:bg-yellow-500 transition-colors">Start Hopping</button>
                     </div>
                   </div>
                 </motion.div>
@@ -306,10 +306,10 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">Your Commute</h3>
                 <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100">
-                   <span className="text-xs font-black text-gray-400 uppercase">Incognito</span>
-                   <button onClick={togglePrivacy} className={`w-10 h-5 rounded-full transition-colors relative ${isAnonymous ? 'bg-yellow-400' : 'bg-gray-300'}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${isAnonymous ? 'left-5.5' : 'left-0.5'}`} />
-                   </button>
+                  <span className="text-xs font-black text-gray-400 uppercase">Incognito</span>
+                  <button onClick={togglePrivacy} className={`w-10 h-5 rounded-full transition-colors relative ${isAnonymous ? 'bg-yellow-400' : 'bg-gray-300'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${isAnonymous ? 'left-5.5' : 'left-0.5'}`} />
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -326,31 +326,31 @@ const Dashboard = () => {
             <section id="available-rides" className="scroll-mt-6">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
-                   <Icon icon="mdi:account-group" className="text-amber-900 text-xl" />
+                  <Icon icon="mdi:account-group" className="text-amber-900 text-xl" />
                 </div>
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">Active Hop-Alongs</h3>
               </div>
-              
+
               {availableRides.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {availableRides.map(ride => (
                     <motion.div key={ride._id} whileHover={{ y: -5 }} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                           <div className="flex -space-x-2">
-                             {[1,2,3].slice(0, ride.riders.length).map(i => (
-                               <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">U</div>
-                             ))}
-                           </div>
-                           <span className="text-[10px] font-black text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg uppercase tracking-tighter">{ride.maxRiders - ride.riders.length} Seats left</span>
+                          <div className="flex -space-x-2">
+                            {[1, 2, 3].slice(0, ride.riders.length).map(i => (
+                              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">U</div>
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-black text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg uppercase tracking-tighter">{ride.maxRiders - ride.riders.length} Seats left</span>
                         </div>
                         <div className="space-y-2">
-                           <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><p className="font-bold text-gray-900 truncate">{ride.pickupLocation.address.split(',')[0]}</p></div>
-                           <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" /><p className="font-bold text-gray-900 truncate">{ride.dropoffLocation.address.split(',')[0]}</p></div>
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><p className="font-bold text-gray-900 truncate">{ride.pickupLocation.address.split(',')[0]}</p></div>
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" /><p className="font-bold text-gray-900 truncate">{ride.dropoffLocation.address.split(',')[0]}</p></div>
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                           <div><p className="text-[10px] font-black text-gray-400 uppercase leading-none">Your Cost</p><p className="text-xl font-black text-green-600">₹{Math.round(ride.fare / (ride.riders.length + 1))}</p></div>
-                           <button onClick={() => joinRide(ride._id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-yellow-400 hover:text-amber-900 transition-all shadow-lg">Hop In</button>
+                          <div><p className="text-[10px] font-black text-gray-400 uppercase leading-none">Your Cost</p><p className="text-xl font-black text-green-600">₹{Math.round(ride.fare / (ride.riders.length + 1))}</p></div>
+                          <button onClick={() => joinRide(ride._id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-yellow-400 hover:text-amber-900 transition-all shadow-lg">Hop In</button>
                         </div>
                       </div>
                     </motion.div>
@@ -358,18 +358,18 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[32px] p-16 text-center">
-                   <Icon icon="mdi:car-search" className="text-5xl text-gray-300 mx-auto mb-4" />
-                   <h4 className="text-xl font-bold text-gray-700">No active rides found</h4>
-                   <p className="text-sm text-gray-400 mt-2">Check back in a few minutes or create your own!</p>
+                  <Icon icon="mdi:car-search" className="text-5xl text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-xl font-bold text-gray-700">No active rides found</h4>
+                  <p className="text-sm text-gray-400 mt-2">Check back in a few minutes or create your own!</p>
                 </div>
               )}
             </section>
 
             <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <StatsCard label="Rides" value={rides.length} icon="mdi:car-multiple" />
-               <StatsCard label="Saved" value={`₹${rides.reduce((acc, r) => acc + r.fare, 0)}`} icon="mdi:wallet" color="text-green-600" />
-               <StatsCard label="Eco Points" value="1,240" icon="mdi:leaf" color="text-emerald-500" />
-               <StatsCard label="Safe Journeys" value="100%" icon="mdi:shield-check" color="text-blue-500" />
+              <StatsCard label="Rides" value={rides.length} icon="mdi:car-multiple" />
+              <StatsCard label="Saved" value={`₹${rides.reduce((acc, r) => acc + r.fare, 0).toFixed(2)}`} icon="mdi:wallet" color="text-green-600" />
+              <StatsCard label="Eco Points" value="1,240" icon="mdi:leaf" color="text-emerald-500" />
+              <StatsCard label="Safe Journeys" value="100%" icon="mdi:shield-check" color="text-blue-500" />
             </section>
           </div>
         )}
