@@ -236,6 +236,7 @@ const CreateRide = () => {
           </AnimatePresence>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };
