@@ -17,7 +17,7 @@ const GetStartedButton = () => {
         if (isAuthenticated) {
           void navigate("/dashboard");
         } else {
-          void navigate("/login");
+          void navigate("/signup");
         }
       }}
     >

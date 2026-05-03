@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useAnimation } from "motion/react";
 import { Icon } from "@iconify/react";
@@ -9,6 +9,7 @@ import { API_DOMAIN } from "./env";
 function App() {
   const controls = useAnimation();
   const containerRef = useRef(null);
+  const { hash } = useLocation();
 
   useEffect(() => {
     void controls.start({
@@ -17,6 +18,18 @@ function App() {
       transition: { duration: 0.5 },
     });
   }, [controls]);
+
+  // Handle Hash Scrolling
+  useEffect(() => {
+    if (hash) {
+      const element = document.getElementById(hash.replace('#', ''));
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [hash]);
 
   return (
     <div ref={containerRef} className="bg-gray-50 min-h-screen">
@@ -47,7 +60,7 @@ function Navbar() {
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
           <img src="/logo.svg" alt="HopAlong Logo" className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-xl shadow-sm bg-white p-1" />
-          <span className="font-black text-lg sm:text-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-transparent bg-clip-text hidden xs:block">
+          <span className="font-black text-xl sm:text-2xl bg-gradient-to-r from-yellow-500 to-amber-600 text-transparent bg-clip-text">
             HopAlong
           </span>
         </motion.div>
@@ -72,8 +85,8 @@ function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-           <Link to="/login" className="text-sm font-black text-gray-500 hover:text-yellow-500 transition-colors px-2 py-1 hidden sm:block">Sign In</Link>
-           <GetStartedButton />
+          <Link to="/login" className="text-sm font-black text-gray-500 hover:text-yellow-500 transition-colors px-2 py-1 hidden sm:block">Sign In</Link>
+          <GetStartedButton />
         </div>
       </div>
     </motion.nav>
@@ -485,37 +498,37 @@ function Contact() {
               )}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" 
-                  placeholder="Your name" 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none"
+                  placeholder="Your name"
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none" 
-                  placeholder="Your IIITK email" 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none"
+                  placeholder="Your IIITK email"
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
-                <textarea 
+                <textarea
                   required
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none h-32" 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none h-32"
                   placeholder="How can we help?"
                 ></textarea>
               </div>
-              <button 
+              <button
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full py-4 bg-yellow-400 text-gray-900 font-bold rounded-xl shadow-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

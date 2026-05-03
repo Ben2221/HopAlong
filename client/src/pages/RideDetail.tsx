@@ -471,9 +471,5 @@ const RideDetail = () => {
     </div>
   );
 };
-      </div>
-    </div>
-  );
-};
 
 export default RideDetail;
