@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
 import { initSocket, getSocket } from "../services/socket";
-import Button from "../components/Button";
+
 import { Icon } from "@iconify/react";
 import {
   MapContainer,
@@ -100,8 +100,10 @@ const RideDetail = () => {
     const fetchRide = async () => {
       try {
         const response = await api.get(`/rides/${id}`);
+        console.log("[Diagnostic] Ride data fetched:", response.data);
         setRide(response.data);
       } catch (err: any) {
+        console.error("[Diagnostic] Fetch error:", err);
         setError(err.response?.data?.message || err.message || "Failed to fetch ride");
       } finally {
         setIsLoading(false);
@@ -146,6 +148,45 @@ const RideDetail = () => {
     }
   };
 
+  useEffect(() => {
+    let watchId: number | null = null;
+    
+    if (user?.role === 'driver' && (ride?.status === 'accepted' || ride?.status === 'ongoing')) {
+      const socket = getSocket();
+      if (socket && navigator.geolocation) {
+        console.log("[Tracking] Starting live location broadcast...");
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            socket.emit('driver_location', locationData);
+            setDriverLocation(locationData);
+          },
+          (err) => console.error("[Tracking] Geolocation error:", err),
+          { enableHighAccuracy: true }
+        );
+      }
+    }
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [user?.role, ride?.status, ride?._id]);
+
+  // Rough ETA calculation (Distance in KM / Avg Campus Speed 20km/h)
+  const calculateETA = () => {
+    if (!driverLocation || !ride) return null;
+    
+    // Simple Euclidean distance for MVP (could use Haversine)
+    const latDiff = ride.dropoffLocation.coordinates[1] - driverLocation.lat;
+    const lngDiff = ride.dropoffLocation.coordinates[0] - driverLocation.lng;
+    const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // Approx km
+    
+    const timeInMinutes = Math.round((distance / 20) * 60) + 2; // +2 mins buffer
+    return timeInMinutes > 0 ? timeInMinutes : 1;
+  };
+
+  const eta = calculateETA();
+
   if (isLoading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -174,59 +215,20 @@ const RideDetail = () => {
 
   // Convert GeoJSON [lng, lat] → [lat, lng] for Leaflet
   const pickupPos: LatLngExpression = [
-    ride.pickupLocation.coordinates[1],
-    ride.pickupLocation.coordinates[0],
+    ride?.pickupLocation?.coordinates?.[1] || 0,
+    ride?.pickupLocation?.coordinates?.[0] || 0,
   ];
   const dropoffPos: LatLngExpression = [
-    ride.dropoffLocation.coordinates[1],
-    ride.dropoffLocation.coordinates[0],
+    ride?.dropoffLocation?.coordinates?.[1] || 0,
+    ride?.dropoffLocation?.coordinates?.[0] || 0,
   ];
   const driverPos: LatLngExpression | null = driverLocation
     ? [driverLocation.lat, driverLocation.lng]
     : null;
 
-  const mapCenter = driverPos ?? pickupPos;
+  // Ensure mapCenter is never invalid
+  const mapCenter: LatLngExpression = driverPos || pickupPos;
   const currentStep = STATUS_STEPS.indexOf(ride.status);
-
-  // Driver location tracking logic
-  useEffect(() => {
-    let watchId: number | null = null;
-    
-    if (user?.role === 'driver' && (ride?.status === 'accepted' || ride?.status === 'ongoing')) {
-      const socket = getSocket();
-      if (socket && navigator.geolocation) {
-        console.log("[Tracking] Starting live location broadcast...");
-        watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            socket.emit('driver_location', locationData);
-            setDriverLocation(locationData);
-          },
-          (err) => console.error("[Tracking] Geolocation error:", err),
-          { enableHighAccuracy: true, distanceFilter: 10 }
-        );
-      }
-    }
-
-    return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [user?.role, ride?.status, ride?._id]);
-
-  // Rough ETA calculation (Distance in KM / Avg Campus Speed 20km/h)
-  const calculateETA = () => {
-    if (!driverLocation || !ride) return null;
-    
-    // Simple Euclidean distance for MVP (could use Haversine)
-    const latDiff = ride.dropoffLocation.coordinates[1] - driverLocation.lat;
-    const lngDiff = ride.dropoffLocation.coordinates[0] - driverLocation.lng;
-    const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // Approx km
-    
-    const timeInMinutes = Math.round((distance / 20) * 60) + 2; // +2 mins buffer
-    return timeInMinutes > 0 ? timeInMinutes : 1;
-  };
-
-  const eta = calculateETA();
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -343,19 +345,19 @@ const RideDetail = () => {
               <Marker position={pickupPos} icon={pickupIcon}>
                 <Popup className="custom-popup">
                   <p className="font-black">Pickup Point</p>
-                  <p className="text-xs text-gray-500">{ride.pickupLocation.address}</p>
+                  <p className="text-xs text-gray-500">{ride?.pickupLocation?.address}</p>
                 </Popup>
               </Marker>
               <Marker position={dropoffPos} icon={dropoffIcon}>
                 <Popup>
                   <p className="font-black">Dropoff Point</p>
-                  <p className="text-xs text-gray-500">{ride.dropoffLocation.address}</p>
+                  <p className="text-xs text-gray-500">{ride?.dropoffLocation?.address}</p>
                 </Popup>
               </Marker>
               {driverPos && (
                 <Marker position={driverPos} icon={driverIcon}>
                   <Popup>
-                    <p className="font-black">Driver: {ride.driver?.name}</p>
+                    <p className="font-black">Driver is here</p>
                   </Popup>
                 </Marker>
               )}
@@ -442,22 +444,22 @@ const RideDetail = () => {
            
            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Driver First if exists */}
-              {ride.driver && (
+              {ride.driver && typeof ride.driver === 'object' && 'name' in (ride.driver as any) && (
                 <div className="p-4 bg-blue-50 rounded-3xl border border-blue-100 flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black shadow-lg">
-                    {ride.driver.name.charAt(0)}
+                    {(ride.driver as any).name?.charAt(0) || 'D'}
                   </div>
                   <div>
-                    <p className="font-black text-blue-900 leading-none">{ride.driver.name}</p>
+                    <p className="font-black text-blue-900 leading-none">{(ride.driver as any).name}</p>
                     <p className="text-[9px] uppercase font-black text-blue-400 mt-1">Certified Driver</p>
                   </div>
                 </div>
               )}
               {/* Riders */}
               {ride.riders.map((r, idx) => (
-                <div key={r.id || idx} className="p-4 bg-gray-50 rounded-3xl border border-gray-100 flex items-center gap-4">
+                <div key={(r as any)._id || idx} className="p-4 bg-gray-50 rounded-3xl border border-gray-100 flex items-center gap-4">
                   <div className="w-12 h-12 bg-white text-yellow-600 rounded-2xl flex items-center justify-center font-black shadow-sm">
-                    {(r.isAnonymous ? r.pseudonym : r.name).charAt(0)}
+                    {(r.isAnonymous ? r.pseudonym : r.name)?.charAt(0) || 'U'}
                   </div>
                   <div className="overflow-hidden">
                     <p className="font-black text-gray-900 leading-none truncate">{r.isAnonymous ? r.pseudonym : r.name}</p>
@@ -467,6 +469,18 @@ const RideDetail = () => {
               ))}
            </div>
         </div>
+        {/* Floating Chat Button */}
+        {ride.status !== 'completed' && ride.status !== 'cancelled' && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate(`/chat?rideId=${ride._id}`)}
+            className="fixed bottom-8 right-8 w-16 h-16 bg-yellow-400 text-amber-900 rounded-full shadow-2xl flex items-center justify-center z-50 hover:bg-yellow-300 transition-colors"
+          >
+            <Icon icon="mdi:chat" className="text-3xl" />
+            <span className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full border-2 border-white animate-pulse" />
+          </motion.button>
+        )}
       </div>
     </div>
   );

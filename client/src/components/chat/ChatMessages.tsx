@@ -7,12 +7,9 @@ export interface Message {
   id: string;
   content: string;
   sentAt: string;
-  sender: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    profilePic?: string | null;
-  };
+  senderId: string;
+  senderName: string;
+  senderEmail: string;
 }
 
 interface ChatMessagesProps {
@@ -100,10 +97,9 @@ const ChatMessages = ({
         <ChatBubble
           key={message.id}
           content={message.content}
-          isCurrentUser={message.sender.id === currentUserId}
-          senderName={`${message.sender.firstName} ${message.sender.lastName}`}
+          isCurrentUser={message.senderEmail === currentUserId}
+          senderName={message.senderName}
           timestamp={formatTimestamp(message.sentAt)}
-          profilePic={message.sender.profilePic}
         />
       ))}
       <div ref={messagesEndRef} />

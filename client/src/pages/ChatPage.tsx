@@ -1,261 +1,133 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { motion } from "motion/react";
-import { API_DOMAIN } from "../env";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "../store/authStore";
 import ChatHeader from "../components/chat/ChatHeader";
 import ChatInput from "../components/chat/ChatInput";
 import ChatMessages, { Message } from "../components/chat/ChatMessages";
-import TaxiPatternBackground from "../components/chat/TaxiPatternBackground";
-import {
-  initCentrifuge,
-  subscribeToChatChannel,
-  disconnectCentrifuge,
-} from "../services/centrifuge";
+import PremiumChatBackground from "../components/chat/PremiumChatBackground";
+import { getSocket, initSocket } from "../services/socket";
+import api from "../services/api";
+import { Icon } from "@iconify/react";
 
-interface RideDetails {
-  id: string;
-  primaryRoute: {
-    startPlaceName: string;
-    endPlaceName: string;
-  };
-  start: string;
-  members: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  }[];
-  owner: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
+interface RideData {
+  _id: string;
+  pickupLocation: { address: string };
+  dropoffLocation: { address: string };
+  riders: any[];
+  driver?: any;
+  status: string;
 }
-
-const CENTRIFUGO_WS_URL = "ws://localhost:8000/connection/websocket";
 
 const ChatPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const rideId = searchParams.get("rideId");
   const { token, user } = useAuthStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [rideDetails, setRideDetails] = useState<RideDetails | null>(null);
+  const [ride, setRide] = useState<RideData | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const [isLoadingRide, setIsLoadingRide] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
-  // Subscribe to chat and load previous messages
   useEffect(() => {
-    if (!rideId || !token) return;
+    if (!rideId || !token || !user) {
+      navigate("/login");
+      return;
+    }
 
-    const loadPreviousMessages = async () => {
-      if (!rideId || !token) return;
-
+    const fetchRideAndHistory = async () => {
       try {
+        setIsLoadingRide(true);
         setIsLoadingMessages(true);
-        const response = await fetch(`${API_DOMAIN}/chat/previous`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            rideId,
-            limit: 50,
-            offset: 0,
-          }),
-        });
 
-        if (!response.ok) {
-          throw new Error("Failed to load previous messages");
-        }
-        const data: unknown = await response.json();
+        // Fetch Ride Details
+        const rideRes = await api.get(`/rides/${rideId}`);
+        setRide(rideRes.data);
+        setIsLoadingRide(false);
 
-        if (data && typeof data === "object" && "messages" in data) {
-          setMessages(data.messages as Message[]);
-        } else {
-          throw new Error(
-            typeof data === "object" && data !== null && "message" in data
-              ? String(data.message)
-              : "Failed to load previous messages"
-          );
-        }
-      } catch (err) {
-        console.error("Error loading previous messages:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
+        // Fetch History
+        const chatRes = await api.get(`/chat/${rideId}`);
+        setMessages(chatRes.data.messages);
+        setIsLoadingMessages(false);
+      } catch (err: any) {
+        console.error("Error loading chat:", err);
+        setError(err.response?.data?.message || "Failed to load chat");
+        setIsLoadingRide(false);
         setIsLoadingMessages(false);
       }
     };
 
-    const fetchRideDetails = async () => {
-      try {
-        // First, subscribe to the chat channel
-        const response = await fetch(`${API_DOMAIN}/chat/subscribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            rideId,
-          }),
-        });
+    fetchRideAndHistory();
 
-        if (!response.ok) {
-          throw new Error("Failed to subscribe to chat");
-        }
+    const socket = getSocket() || initSocket(token);
 
-        const data: unknown = await response.json();
+    socket.on("new_message", (message: Message) => {
+      setMessages((prev) => [...prev, message]);
+    });
 
-        if (
-          data &&
-          typeof data === "object" &&
-          "success" in data &&
-          data.success
-        ) {
-          // Initialize Centrifugo connection
-          initCentrifuge({
-            token: (
-              data as { success: boolean; token: string; channel: string }
-            ).token,
-            url: CENTRIFUGO_WS_URL,
-          });
-
-          // Subscribe to channel
-          subscribeToChatChannel(
-            (data as { success: boolean; token: string; channel: string })
-              .channel,
-            (messageData) => {
-              setMessages((prevMessages) => [
-                ...prevMessages,
-                messageData as Message,
-              ]);
-            }
-          );
-        } else {
-          throw new Error(
-            typeof data === "object" && data !== null && "message" in data
-              ? String(data.message)
-              : "Failed to subscribe to chat"
-          );
-        }
-
-        // Then load previous messages
-        await loadPreviousMessages();
-
-        // Finally fetch ride details
-        const rideResponse = await fetch(`${API_DOMAIN}/api/rides/${rideId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!rideResponse.ok) {
-          throw new Error("Failed to load ride details");
-        }
-
-        const rideData: unknown = await rideResponse.json();
-        setRideDetails(
-          (rideData as { success: boolean; ride: unknown }).ride as RideDetails
-        );
-        setIsLoadingRide(false);
-      } catch (err) {
-        console.error("Error setting up chat:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-        setIsLoadingRide(false);
-      }
-    };
-
-    void fetchRideDetails();
+    socket.emit("join_ride_room", { rideId });
 
     return () => {
-      disconnectCentrifuge();
+      socket.off("new_message");
     };
-  }, [rideId, token]);
+  }, [rideId, token, user, navigate]);
 
-  const sendMessage = async (content: string) => {
-    if (!rideId || !token || !content.trim()) return;
-
-    try {
+  const sendMessage = (content: string) => {
+    if (!rideId || !content.trim()) return;
+    
+    const socket = getSocket();
+    if (socket) {
       setIsSending(true);
-      const response = await fetch(`${API_DOMAIN}/chat/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          rideId,
-          content,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
-
-      // No need to update messages here as it will come through the Centrifugo subscription
-    } catch (err) {
-      console.error("Error sending message:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
+      socket.emit("send_message", { rideId, content });
       setIsSending(false);
     }
   };
 
-  const formatRideDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Calculate member count (including owner)
-  const memberCount = rideDetails ? (rideDetails.members.length || 0) + 1 : 0;
+  const memberCount = (ride?.riders?.length || 0) + (ride?.driver ? 1 : 0);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 relative">
-      <TaxiPatternBackground />
+    <div className="h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+      <PremiumChatBackground />
 
-      {/* Chat Header */}
-      <ChatHeader
-        destination={rideDetails?.primaryRoute.endPlaceName ?? "Loading..."}
-        memberCount={memberCount}
-        date={
-          rideDetails?.start ? formatRideDate(rideDetails.start) : undefined
-        }
-        isLoading={isLoadingRide}
-      />
+      {/* Header */}
+      <div className="z-10">
+        <ChatHeader
+          destination={ride?.dropoffLocation?.address?.split(',')[0] ?? "Loading..."}
+          memberCount={memberCount}
+          isLoading={isLoadingRide}
+        />
+      </div>
 
       {/* Error Message */}
       {error && (
         <motion.div
-          className="m-4 p-3 bg-red-100 text-red-700 rounded-md"
+          className="m-4 p-4 bg-red-50 text-red-700 rounded-2xl border border-red-100 flex items-center gap-3 z-20"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {error}
+          <Icon icon="mdi:alert-circle" className="text-xl" />
+          <p className="font-bold text-sm">{error}</p>
         </motion.div>
       )}
 
       {/* Messages Container */}
-      <ChatMessages
-        messages={messages}
-        currentUserId={user ? user.email : ""}
-        isLoading={isLoadingMessages}
-      />
-      <ChatInput
-        onSendMessage={(c) => {
-          void sendMessage(c);
-        }}
-        isDisabled={isSending || isLoadingMessages || !!error}
-      />
+      <div className="flex-1 overflow-hidden flex flex-col z-10">
+        <ChatMessages
+          messages={messages}
+          currentUserId={user?.email || ""}
+          isLoading={isLoadingMessages}
+        />
+      </div>
+      
+      <div className="z-20">
+        <ChatInput
+          onSendMessage={sendMessage}
+          isDisabled={isSending || isLoadingMessages || !!error}
+        />
+      </div>
     </div>
   );
 };

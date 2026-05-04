@@ -9,6 +9,7 @@ import rideRoutes from './routes/rides';
 import userRoutes from './routes/user';
 import contactRoutes from './routes/contact';
 import adminRoutes from './routes/admin';
+import chatRoutes from './routes/chat';
 import { setupSocket } from './sockets/index';
 
 dotenv.config();
@@ -51,6 +52,7 @@ app.use('/api/rides', rideRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 import { GlobalSettings } from './models/GlobalSettings';
 app.get('/api/settings/public', async (req, res) => {

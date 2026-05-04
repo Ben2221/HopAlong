@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import FindingRide from "./pages/FindingRide.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import ErrorBoundary from "./components/ErrorBoundary.tsx";
 
 import "./index.css";
 import App from "./App.tsx";
@@ -29,77 +30,79 @@ if (rootElement) {
     <StrictMode>
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<App />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/guidelines" element={<SafetyGuidelines />} />
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<App />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/guidelines" element={<SafetyGuidelines />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/create-ride"
-              element={
-                <ProtectedRoute requiredRole="rider">
-                  <CreateRide />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/finding-ride"
-              element={
-                <ProtectedRoute requiredRole="rider">
-                  <FindingRide />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rides/:id"
-              element={
-                <ProtectedRoute>
-                  <RideDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/chat"
-              element={
-                <ProtectedRoute>
-                  <ChatPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/create-ride"
+                element={
+                  <ProtectedRoute requiredRole="rider">
+                    <CreateRide />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/finding-ride"
+                element={
+                  <ProtectedRoute requiredRole="rider">
+                    <FindingRide />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/rides/:id"
+                element={
+                  <ProtectedRoute>
+                    <RideDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedRoute>
+                    <ChatPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </ErrorBoundary>
         </QueryClientProvider>
       </BrowserRouter>
     </StrictMode>

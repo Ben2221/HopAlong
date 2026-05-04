@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Ride } from '../models/Ride';
+import { Message } from '../models/Message';
 
 // Store connected users: socketId -> userId
 const connectedUsers = new Map<string, string>();
@@ -34,7 +35,7 @@ export const setupSocket = (io: Server) => {
     // Handle Driver going online/offline
     socket.on('driver_status', async (data: { isOnline: boolean }) => {
       if (role !== 'driver') return;
-      await User.findByIdAndUpdate(userId, { isOnline: data.isOnline }, { new: true });
+      await User.findByIdAndUpdate(userId, { isOnline: data.isOnline }, { returnDocument: 'after' });
       
       if (data.isOnline) {
         // Find all pending rides and notify this specific driver
@@ -66,7 +67,7 @@ export const setupSocket = (io: Server) => {
           type: 'Point',
           coordinates: [data.lng, data.lat] // GeoJSON is [longitude, latitude]
         }
-      }, { new: true });
+      }, { returnDocument: 'after' });
       
       // If the driver is in a ride room, broadcast location to the rider
       socket.rooms.forEach(room => {
@@ -232,7 +233,7 @@ export const setupSocket = (io: Server) => {
               const driverPaymentResult = await User.findByIdAndUpdate(
                 ride.driver,
                 { $inc: { walletBalance: ride.fare } },
-                { new: true }
+                { returnDocument: 'after' }
               );
               console.log(`[Socket] Driver payment result for ${ride.driver}:`, !!driverPaymentResult);
             }
@@ -248,12 +249,38 @@ export const setupSocket = (io: Server) => {
       }
     });
 
+    // Handle chat messages
+    socket.on('send_message', async (data: { rideId: string, content: string }) => {
+      try {
+        const newMessage = new Message({
+          rideId: data.rideId,
+          senderId: userId,
+          content: data.content
+        });
+        await newMessage.save();
+
+        const roomName = `ride_${data.rideId}`;
+        const user = await User.findById(userId);
+        
+        io.to(roomName).emit('new_message', {
+          id: newMessage._id,
+          content: newMessage.content,
+          senderId: userId,
+          senderEmail: user?.email,
+          senderName: user?.isAnonymous ? user?.pseudonym : user?.name,
+          sentAt: newMessage.createdAt
+        });
+      } catch (err) {
+        console.error('[Socket] Error in send_message:', err);
+      }
+    });
+
     socket.on('disconnect', async () => {
       console.log(`User disconnected: ${userId}`);
       connectedUsers.delete(userId);
       if (role === 'driver') {
         driversLocation.delete(userId);
-        await User.findByIdAndUpdate(userId, { isOnline: false }, { new: true });
+        await User.findByIdAndUpdate(userId, { isOnline: false }, { returnDocument: 'after' });
       }
     });
   });

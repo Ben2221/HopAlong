@@ -149,6 +149,8 @@ const Dashboard = () => {
     }
   };
 
+  const activeRides = rides.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
+
   if (!user) return null;
 
   return (
@@ -182,6 +184,50 @@ const Dashboard = () => {
             />
             <p className="font-bold text-sm md:text-base">{publicSettings.broadcastBanner.message}</p>
           </motion.div>
+        )}
+        {/* Active Journeys Section */}
+        {activeRides.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
+                <Icon icon="mdi:map-marker-path" className="text-white text-xl" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight">Active Journeys</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {activeRides.map(activeRide => (
+                <motion.div 
+                  key={activeRide._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gray-900 rounded-[40px] p-8 relative overflow-hidden shadow-2xl border-2 border-green-500/30"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+                  <div className="flex justify-between items-start mb-8">
+                    <div>
+                      <span className="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
+                        LIVE: {activeRide.status}
+                      </span>
+                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-3">Current Route</p>
+                      <h4 className="text-xl font-black text-white leading-tight mt-1">
+                        {activeRide.pickupLocation.address.split(',')[0]} → {activeRide.dropoffLocation.address.split(',')[0]}
+                      </h4>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-2xl text-white">
+                      <Icon icon="mdi:car-clock" className="text-2xl" />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => navigate(`/rides/${activeRide._id}`)}
+                    className="w-full bg-green-500 hover:bg-green-400 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 transition-all flex items-center justify-center gap-3 group"
+                  >
+                    Resume Journey
+                    <Icon icon="mdi:arrow-right" className="group-hover:translate-x-2 transition-transform" />
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* ROLE BASED DASHBOARDS */}
