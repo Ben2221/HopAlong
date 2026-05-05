@@ -5,7 +5,6 @@ import Login from "./pages/Login.tsx";
 import SignUp from "./pages/Signup.tsx";
 import CreateRide from "./pages/CreateRide";
 import Dashboard from "./pages/Dashboard.tsx";
-import FindingRide from "./pages/FindingRide.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
