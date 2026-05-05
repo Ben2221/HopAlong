@@ -19,7 +19,6 @@ const CreateRide = () => {
   const resetRouteStore = useRouteStore((state) => state.resetOnPageLoad);
   const storeFrom = useRouteStore((state) => state.from);
   const storeTo = useRouteStore((state) => state.to);
-  const setRideDateTime = useRouteStore((state) => state.setRideDateTime);
 
   useEffect(() => {
     resetRouteStore();

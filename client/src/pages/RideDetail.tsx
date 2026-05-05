@@ -77,6 +77,7 @@ interface RideData {
     dropoffLocation: { address: string; coordinates: [number, number] };
     distance: number;
   }[];
+  driver?: { id: string; name: string; email: string };
   maxRiders: number;
 }
 
