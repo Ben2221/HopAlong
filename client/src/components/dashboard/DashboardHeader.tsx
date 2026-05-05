@@ -30,8 +30,8 @@ const DashboardHeader = ({ name, role, walletBalance, pseudonym }: DashboardHead
         >
           <div className="flex items-center gap-3 overflow-hidden">
             <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                <img src="/logo.svg" alt="HopAlong Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                <img src="/logo.svg" alt="HopAlong Logo" className="w-[85%] h-[85%] object-contain" />
               </div>
               <span className="text-white font-black text-lg sm:text-2xl tracking-tight hidden xs:block">HopAlong</span>
             </Link>

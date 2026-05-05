@@ -96,6 +96,7 @@ const RideDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [segmentDistances, setSegmentDistances] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!token || !id || !user) {
@@ -142,6 +143,28 @@ const RideDetail = () => {
       socket.off("rider_joined");
     };
   }, [id, token, user, navigate]);
+
+  useEffect(() => {
+    const fetchDistances = async () => {
+      if (!ride) return;
+      const distances: Record<string, number> = {};
+      await Promise.all(ride.riderSegments.map(async (seg) => {
+        try {
+          const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${seg.pickupLocation.coordinates[0]},${seg.pickupLocation.coordinates[1]};${seg.dropoffLocation.coordinates[0]},${seg.dropoffLocation.coordinates[1]}?overview=false`
+          );
+          const data = await response.json();
+          if (data.routes && data.routes[0]) {
+            distances[seg.userId] = data.routes[0].distance / 1000; // meters to km
+          }
+        } catch (e) {
+          console.error("Dist calc error", e);
+        }
+      }));
+      setSegmentDistances(distances);
+    };
+    fetchDistances();
+  }, [ride?.riderSegments]);
 
   const updateStatus = async (newStatus: string) => {
     if (!ride) return;
@@ -208,6 +231,8 @@ const RideDetail = () => {
   };
 
   const eta = calculateETA();
+
+  if (!user) return null;
 
   if (isLoading)
     return (
@@ -437,10 +462,17 @@ const RideDetail = () => {
                    <div className="h-[1px] bg-white/10 w-full" />
                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-black text-yellow-400">Your Split Cost</p>
-                        <p className="text-[10px] text-white/40 uppercase">Divided by {ride.riders.length} riders</p>
+                        <p className="text-sm font-black text-yellow-400">Your Proportional Split</p>
+                        <p className="text-[10px] text-white/40 uppercase">Based on road distance: {segmentDistances[user.id]?.toFixed(2) || '...'} km</p>
                       </div>
-                      <p className="text-4xl font-black text-yellow-400">₹{(ride.fare / ride.riders.length).toFixed(2)}</p>
+                      <p className="text-4xl font-black text-yellow-400">
+                         ₹{(() => {
+                           const myDist = segmentDistances[user.id] || 0;
+                           const totalDist = Object.values(segmentDistances).reduce((a, b) => a + b, 0);
+                           if (totalDist === 0) return (ride.fare / ride.riders.length).toFixed(2);
+                           return ((myDist / totalDist) * ride.fare).toFixed(2);
+                         })()}
+                      </p>
                    </div>
                 </div>
              </div>

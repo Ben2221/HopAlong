@@ -128,7 +128,15 @@ const CreateRide = () => {
       // 2. Initialize socket if needed
       const socket = getSocket() || initSocket(token);
 
-      // 3. Emit request_ride (The server handles creation and broadcasting)
+      // 3. Listen for success to navigate directly (Register BEFORE emitting)
+      const handleSuccess = (data: { rideId: string }) => {
+        socket.off('ride_request_success', handleSuccess);
+        navigate(`/rides/${data.rideId}`);
+      };
+
+      socket.on('ride_request_success', handleSuccess);
+
+      // 4. Emit request_ride
       socket.emit('request_ride', {
         pickup: { lat: storeFrom.latitude, lng: storeFrom.longitude, address: storeFrom.name },
         dropoff: { lat: storeTo.latitude, lng: storeTo.longitude, address: storeTo.name },
@@ -137,18 +145,13 @@ const CreateRide = () => {
         maxRiders
       });
 
-      // 4. Listen for success to navigate directly
-      const handleSuccess = (data: { rideId: string }) => {
-        socket.off('ride_request_success', handleSuccess);
-        navigate(`/rides/${data.rideId}`);
-      };
-
-      socket.on('ride_request_success', handleSuccess);
-
       // Timeout fallback to dashboard if socket event takes too long
       setTimeout(() => {
         socket.off('ride_request_success', handleSuccess);
-        navigate("/dashboard");
+        // Only navigate if we're still on the create page (prevents double nav)
+        if (window.location.pathname === '/create-ride') {
+          navigate("/dashboard");
+        }
       }, 5000);
 
     } catch (err: any) {

@@ -20,6 +20,7 @@ import TermsOfService from "./pages/Terms.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import RideHistory from "./pages/RideHistory.tsx";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,14 @@ if (rootElement) {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <RideHistory />
                   </ProtectedRoute>
                 }
               />

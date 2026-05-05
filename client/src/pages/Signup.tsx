@@ -148,51 +148,6 @@ const SignUp = () => {
                 delay={0.5}
               />
 
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-700">I am a...</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setFormData({ ...formData, role: 'rider' })}
-                    className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      formData.role === 'rider' 
-                      ? 'border-yellow-400 bg-yellow-50 shadow-md' 
-                      : 'border-gray-100 bg-white hover:border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
-                      formData.role === 'rider' ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <Icon icon="mdi:account" />
-                    </div>
-                    <span className={`font-bold text-sm ${formData.role === 'rider' ? 'text-yellow-700' : 'text-gray-500'}`}>
-                      Rider
-                    </span>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setFormData({ ...formData, role: 'driver' })}
-                    className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      formData.role === 'driver' 
-                      ? 'border-yellow-400 bg-yellow-50 shadow-md' 
-                      : 'border-gray-100 bg-white hover:border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
-                      formData.role === 'driver' ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <Icon icon="mdi:car" />
-                    </div>
-                    <span className={`font-bold text-sm ${formData.role === 'driver' ? 'text-yellow-700' : 'text-gray-500'}`}>
-                      Driver
-                    </span>
-                  </motion.div>
-                </div>
-              </div>
-
               <div className="pt-4">
                 <Button
                   fullWidth

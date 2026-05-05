@@ -465,7 +465,12 @@ const Dashboard = () => {
         <section className="mt-16">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-black text-gray-900 tracking-tight">Recent Activity</h3>
-            <button className="text-yellow-600 font-bold text-sm hover:underline">Full History</button>
+            <button 
+              onClick={() => navigate("/history")}
+              className="text-yellow-600 font-bold text-sm hover:underline"
+            >
+              Full History
+            </button>
           </div>
           <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
             {isLoading ? (

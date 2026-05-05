@@ -4,6 +4,7 @@ import { User } from '../models/User';
 import { Ride } from '../models/Ride';
 import { Message } from '../models/Message';
 import { calculateDistance } from '../utils/haversine';
+import { getRoadDistance } from '../utils/routing';
 
 // Store connected users: socketId -> userId
 const connectedUsers = new Map<string, string>();
@@ -260,27 +261,27 @@ export const setupSocket = (io: Server) => {
           if (riderCount > 0) {
             console.log(`[Socket] Completing ride ${data.rideId}. Total Fare: ${ride.fare}`);
 
-            // 1. Calculate distances for each segment
+            // 1. Calculate distances for each segment using real road routing
             let totalWeightedDistance = 0;
-            const segmentDistances = ride.riderSegments.map(segment => {
-              const d = calculateDistance(
+            const segmentDistances = await Promise.all(ride.riderSegments.map(async (segment) => {
+              const d = await getRoadDistance(
                 segment.pickupLocation.coordinates[1],
                 segment.pickupLocation.coordinates[0],
                 segment.dropoffLocation.coordinates[1],
                 segment.dropoffLocation.coordinates[0]
               );
-              totalWeightedDistance += d;
               return { userId: segment.userId, distance: d };
-            });
+            }));
 
-            console.log(`[Socket] Total Weighted Distance: ${totalWeightedDistance}`);
+            totalWeightedDistance = segmentDistances.reduce((acc, s) => acc + s.distance, 0);
+            console.log(`[Socket] Total Weighted Road Distance: ${totalWeightedDistance}km`);
 
             // 2. Deduct proportionally from each rider
             for (const seg of segmentDistances) {
               const proportion = totalWeightedDistance > 0 ? (seg.distance / totalWeightedDistance) : (1 / riderCount);
               const riderFare = Number((ride.fare * proportion).toFixed(2));
               
-              console.log(`[Socket] Rider ${seg.userId} pays ₹${riderFare} for ${seg.distance.toFixed(2)}km`);
+              console.log(`[Socket] Rider ${seg.userId} pays ₹${riderFare} for road-distance ${seg.distance.toFixed(2)}km`);
               
               await User.findByIdAndUpdate(seg.userId, { $inc: { walletBalance: -riderFare } });
             }
