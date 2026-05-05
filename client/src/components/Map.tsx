@@ -132,15 +132,7 @@ const Map = () => {
       )}
 
       {/* Route Line */}
-      {fromPosition && toPosition && (
-        <Polyline 
-          positions={[fromPosition, toPosition]} 
-          color="#FBBF24" 
-          weight={5} 
-          opacity={0.8}
-          dashArray="10, 10"
-        />
-      )}
+      <RouteLine from={fromPosition} to={toPosition} />
 
       {/* Default marker if no from/to */}
       {!fromPosition && !toPosition && (
@@ -154,6 +146,48 @@ const Map = () => {
       {/* Auto-fit bounds when both points are available */}
       <FitBounds from={fromPosition} to={toPosition} />
     </MapContainer>
+  );
+};
+
+const RouteLine = ({ from, to }: { from: LatLngExpression | null; to: LatLngExpression | null }) => {
+  const [positions, setPositions] = useState<LatLngExpression[]>([]);
+
+  useEffect(() => {
+    if (from && to) {
+      const fetchRoute = async () => {
+        try {
+          const [fLat, fLng] = from as [number, number];
+          const [tLat, tLng] = to as [number, number];
+          const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${fLng},${fLat};${tLng},${tLat}?overview=full&geometries=geojson`
+          );
+          const data = await response.json();
+          if (data.routes && data.routes[0]) {
+            const coords = data.routes[0].geometry.coordinates.map(
+              (c: [number, number]) => [c[1], c[0]] as LatLngExpression
+            );
+            setPositions(coords);
+          }
+        } catch (error) {
+          console.error("Routing error:", error);
+          setPositions([from, to]);
+        }
+      };
+      fetchRoute();
+    } else {
+      setPositions([]);
+    }
+  }, [from, to]);
+
+  if (positions.length === 0) return null;
+
+  return (
+    <Polyline 
+      positions={positions} 
+      color="#FBBF24" 
+      weight={5} 
+      opacity={0.8}
+    />
   );
 };
 

@@ -54,16 +54,8 @@ if (rootElement) {
               <Route
                 path="/create-ride"
                 element={
-                  <ProtectedRoute requiredRole="rider">
+                  <ProtectedRoute>
                     <CreateRide />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/finding-ride"
-                element={
-                  <ProtectedRoute requiredRole="rider">
-                    <FindingRide />
                   </ProtectedRoute>
                 }
               />

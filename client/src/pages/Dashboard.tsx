@@ -34,6 +34,7 @@ const Dashboard = () => {
   // Rider specific state
   const [availableRides, setAvailableRides] = useState<any[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(user?.isAnonymous || false);
+  const [sosAlert, setSosAlert] = useState<any>(null);
 
   const [publicSettings, setPublicSettings] = useState<any>(null);
 
@@ -94,6 +95,12 @@ const Dashboard = () => {
     if (user.role === 'rider' || user.role === 'admin') {
       socket.on('ride_accepted', (data) => {
         navigate(`/rides/${data.rideId}`);
+      });
+      
+      socket.on('sos_alert', (data) => {
+        console.error('[SOS] RECEIVED EMERGENCY ALERT:', data);
+        setSosAlert(data);
+        // Play a sound or trigger a browser notification if possible
       });
     }
 
@@ -163,6 +170,40 @@ const Dashboard = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        {/* SOS Alert for Admins */}
+        <AnimatePresence>
+          {sosAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="mb-8 p-6 bg-red-600 text-white rounded-[32px] shadow-2xl border-4 border-white flex flex-col md:flex-row items-center gap-6 z-50 relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-red-700 animate-pulse opacity-50" />
+              <div className="relative z-10 w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-red-600 shadow-lg">
+                <Icon icon="mdi:alert-decagram" className="text-4xl animate-bounce" />
+              </div>
+              <div className="relative z-10 flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Emergency SOS Triggered!</h3>
+                <p className="font-bold text-red-100">User <span className="text-white">{sosAlert.userName}</span> has triggered an emergency for ride <span className="text-white">#{sosAlert.rideId.slice(-6)}</span></p>
+              </div>
+              <div className="relative z-10 flex gap-3">
+                <button 
+                  onClick={() => navigate(`/rides/${sosAlert.rideId}`)}
+                  className="bg-white text-red-600 px-8 py-3 rounded-xl font-black shadow-lg hover:bg-gray-100 transition-all"
+                >
+                  View Ride
+                </button>
+                <button 
+                  onClick={() => setSosAlert(null)}
+                  className="bg-red-800/50 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-800 transition-all"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Broadcast Banner */}
         {publicSettings?.broadcastBanner?.isActive && (

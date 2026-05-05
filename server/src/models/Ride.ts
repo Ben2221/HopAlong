@@ -18,6 +18,20 @@ export interface IRide extends Document {
   };
   status: 'pending' | 'accepted' | 'ongoing' | 'completed' | 'cancelled';
   fare: number;
+  riderSegments: {
+    userId: mongoose.Types.ObjectId;
+    pickupLocation: {
+      type: 'Point';
+      coordinates: [number, number];
+      address: string;
+    };
+    dropoffLocation: {
+      type: 'Point';
+      coordinates: [number, number];
+      address: string;
+    };
+    distance: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,7 +56,21 @@ const rideSchema = new Schema<IRide>({
     enum: ['pending', 'accepted', 'ongoing', 'completed', 'cancelled'],
     default: 'pending'
   },
-  fare: { type: Number, required: true }
+  fare: { type: Number, required: true },
+  riderSegments: [{
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    pickupLocation: {
+      type: { type: String, enum: ['Point'] },
+      coordinates: { type: [Number] },
+      address: { type: String }
+    },
+    dropoffLocation: {
+      type: { type: String, enum: ['Point'] },
+      coordinates: { type: [Number] },
+      address: { type: String }
+    },
+    distance: { type: Number, default: 0 }
+  }]
 }, { timestamps: true });
 
 export const Ride = mongoose.model<IRide>('Ride', rideSchema);

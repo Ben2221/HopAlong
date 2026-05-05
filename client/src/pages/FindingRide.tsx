@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/ui/Spinner";
@@ -21,8 +21,11 @@ export default function FindingRide() {
   const { token, user } = useAuthStore();
   const [messageIndex, setMessageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const hasRequested = useRef(false);
 
   useEffect(() => {
+    if (hasRequested.current) return;
+    
     if (!token || !user) {
       navigate('/login');
       return;
@@ -60,6 +63,7 @@ export default function FindingRide() {
       }
     };
 
+    hasRequested.current = true;
     requestRide();
 
     // Listen for events

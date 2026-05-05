@@ -10,10 +10,12 @@ import Button from "../components/Button";
 import { useRouteStore } from "../store/routeStore";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import { useAuthStore } from "../store/authStore";
+import api from "../services/api";
+import { getSocket, initSocket } from "../services/socket";
 
 const CreateRide = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const resetRouteStore = useRouteStore((state) => state.resetOnPageLoad);
   const storeFrom = useRouteStore((state) => state.from);
   const storeTo = useRouteStore((state) => state.to);
@@ -31,6 +33,9 @@ const CreateRide = () => {
   const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [maxRiders, setMaxRiders] = useState(4);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nearbyRides, setNearbyRides] = useState<any[]>([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
 
   // Memoize expensive API calls and computations
   const { suggestions: fromSuggestions, isLoading: isLoadingFrom } =
@@ -59,6 +64,46 @@ const CreateRide = () => {
     setToQuery(value);
   };
 
+  useEffect(() => {
+    const fetchNearby = async () => {
+      if (storeFrom && storeTo) {
+        setIsLoadingNearby(true);
+        try {
+          const response = await api.get('/rides/available', {
+            params: {
+              pickupLat: storeFrom.latitude,
+              pickupLng: storeFrom.longitude,
+              dropoffLat: storeTo.latitude,
+              dropoffLng: storeTo.longitude
+            }
+          });
+          setNearbyRides(response.data);
+        } catch (err) {
+          console.error("Failed to fetch nearby rides", err);
+        } finally {
+          setIsLoadingNearby(false);
+        }
+      }
+    };
+    fetchNearby();
+  }, [storeFrom, storeTo]);
+
+  const handleJoinExisting = async (rideId: string) => {
+    if (!storeFrom || !storeTo || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.post('/rides/join', {
+        rideId,
+        pickupLocation: { lat: storeFrom.latitude, lng: storeFrom.longitude, address: storeFrom.name },
+        dropoffLocation: { lat: storeTo.latitude, lng: storeTo.longitude, address: storeTo.name }
+      });
+      navigate(`/rides/${rideId}`);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to join ride");
+      setIsSubmitting(false);
+    }
+  };
+
   const handleShowTimePicker = () => {
     setShowTimePicker(true);
   };
@@ -67,13 +112,51 @@ const CreateRide = () => {
     setSelectedDateTime(dateTime);
   }, []);
 
-  const handleConfirmRide = () => {
-    if (!selectedDateTime) return;
+  const handleConfirmRide = async () => {
+    if (!selectedDateTime || isSubmitting || !storeFrom || !storeTo || !token) return;
 
-    setRideDateTime(selectedDateTime);
-    useRouteStore.getState().setCarpoolOptions(isPublic, maxRiders);
+    setIsSubmitting(true);
+    
+    try {
+      // 1. Get fare estimate
+      const response = await api.post('/rides/estimate', {
+        pickupLocation: { lat: storeFrom.latitude, lng: storeFrom.longitude },
+        dropoffLocation: { lat: storeTo.latitude, lng: storeTo.longitude }
+      });
 
-    navigate("/finding-ride");
+      const fare = response.data.fare;
+
+      // 2. Initialize socket if needed
+      const socket = getSocket() || initSocket(token);
+
+      // 3. Emit request_ride (The server handles creation and broadcasting)
+      socket.emit('request_ride', {
+        pickup: { lat: storeFrom.latitude, lng: storeFrom.longitude, address: storeFrom.name },
+        dropoff: { lat: storeTo.latitude, lng: storeTo.longitude, address: storeTo.name },
+        fare,
+        isPublic,
+        maxRiders
+      });
+
+      // 4. Listen for success to navigate directly
+      const handleSuccess = (data: { rideId: string }) => {
+        socket.off('ride_request_success', handleSuccess);
+        navigate(`/rides/${data.rideId}`);
+      };
+
+      socket.on('ride_request_success', handleSuccess);
+
+      // Timeout fallback to dashboard if socket event takes too long
+      setTimeout(() => {
+        socket.off('ride_request_success', handleSuccess);
+        navigate("/dashboard");
+      }, 5000);
+
+    } catch (err: any) {
+      console.error("Failed to create ride:", err);
+      alert(err.response?.data?.message || "Failed to create ride. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   if (!user) return null;
@@ -87,17 +170,14 @@ const CreateRide = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full flex-1 flex flex-col">
-        {/* Header section for the page */}
         <div className="flex items-center gap-3 mb-6">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create a New Journey</h2>
         </div>
 
-        {/* Map Section - Real interactive map */}
         <div className="h-[300px] md:h-[400px] rounded-[32px] overflow-hidden shadow-2xl mb-8 relative">
           <Map />
         </div>
 
-        {/* Ride Details Section - Fixed height */}
         <motion.div
           className="bg-white shadow-2xl rounded-[32px] p-8 border border-gray-100"
           initial={{ y: 50, opacity: 0 }}
@@ -150,22 +230,16 @@ const CreateRide = () => {
                     </Button>
                   </div>
 
-                  {/* Error message container - always present in DOM */}
                   <div className="h-6 min-h-6">
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: isLocationSelectionValid ? 0 : 1 }}
                       style={{
-                        visibility: isLocationSelectionValid
-                          ? "hidden"
-                          : "visible",
+                        visibility: isLocationSelectionValid ? "hidden" : "visible",
                       }}
                       className="text-center text-yellow-600 text-sm"
                     >
-                      <Icon
-                        icon="mdi:information"
-                        className="inline-block mr-1"
-                      />
+                      <Icon icon="mdi:information" className="inline-block mr-1" />
                       Please select both pickup and destination locations
                     </motion.div>
                   </div>
@@ -222,9 +296,9 @@ const CreateRide = () => {
                     <Button
                       icon="mdi:check-circle"
                       onClick={handleConfirmRide}
-                      disabled={!isTimeSelectionValid}
+                      disabled={!isTimeSelectionValid || isSubmitting}
                     >
-                      Confirm Ride
+                      {isSubmitting ? "Processing..." : "Confirm Ride"}
                     </Button>
                   </div>
                 </motion.div>
@@ -232,6 +306,64 @@ const CreateRide = () => {
             </AnimatePresence>
           </div>
         </motion.div>
+
+        {/* Nearby Available Rides */}
+        <AnimatePresence>
+          {isLocationSelectionValid && !showTimePicker && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="mt-10"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center shadow-lg">
+                  <Icon icon="mdi:car-multiple" className="text-white text-lg" />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">Available Hop-Alongs on your route</h3>
+              </div>
+
+              {isLoadingNearby ? (
+                <div className="flex justify-center p-10">
+                  <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : nearbyRides.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {nearbyRides.map(ride => (
+                    <motion.div 
+                      key={ride._id}
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-white p-6 rounded-3xl border-2 border-green-100 shadow-sm flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">On your way</p>
+                        <h4 className="font-black text-gray-900 truncate max-w-[200px]">
+                          {ride.pickupLocation.address.split(',')[0]} → {ride.dropoffLocation.address.split(',')[0]}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Icon icon="mdi:account-group" className="text-gray-400" />
+                          <span className="text-xs font-bold text-gray-500">{ride.maxRiders - ride.riders.length} seats available</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleJoinExisting(ride._id)}
+                        disabled={isSubmitting}
+                        className="bg-green-500 text-white px-6 py-3 rounded-2xl font-black text-sm hover:bg-green-600 transition-all shadow-lg"
+                      >
+                        Join This
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-100/50 border-2 border-dashed border-gray-200 rounded-3xl p-8 text-center">
+                  <p className="text-gray-500 font-bold text-sm">No existing rides matching your route yet.</p>
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-black">You can create your own ride above!</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

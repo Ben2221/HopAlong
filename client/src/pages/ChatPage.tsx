@@ -93,10 +93,11 @@ const ChatPage = () => {
       <PremiumChatBackground />
 
       {/* Header */}
-      <div className="z-10">
+      <div className="z-50">
         <ChatHeader
           destination={ride?.dropoffLocation?.address?.split(',')[0] ?? "Loading..."}
           memberCount={memberCount}
+          ride={ride}
           isLoading={isLoadingRide}
         />
       </div>

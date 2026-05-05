@@ -42,12 +42,8 @@ const SignUp = () => {
     if (!formData.name) newErrors.name = "Name is required";
     if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (
-      !formData.email.endsWith("@iiitkottayam.ac.in") && 
-      !formData.email.endsWith("@iiitk.ac.in") && 
-      formData.email !== "bensavio2221@gmail.com"
-    ) {
-      newErrors.email = "Only IIIT Kottayam email addresses are allowed";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.password) newErrors.password = "Password is required";

@@ -71,7 +71,12 @@ interface RideData {
     pseudonym: string; 
     isAnonymous: boolean 
   }[];
-  driver?: { name: string; email: string };
+  riderSegments: {
+    userId: string;
+    pickupLocation: { address: string; coordinates: [number, number] };
+    dropoffLocation: { address: string; coordinates: [number, number] };
+    distance: number;
+  }[];
   maxRiders: number;
 }
 
@@ -144,6 +149,22 @@ const RideDetail = () => {
       setUpdating(true);
       socket.emit("update_ride_status", { rideId: ride._id, status: newStatus });
       setRide({ ...ride, status: newStatus });
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteRide = async () => {
+    if (!ride) return;
+    if (!window.confirm("Are you sure you want to delete this ride? This action cannot be undone.")) return;
+
+    try {
+      setUpdating(true);
+      await api.delete(`/rides/${ride._id}`);
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      alert(err.response?.data?.message || "Failed to delete ride");
+    } finally {
       setUpdating(false);
     }
   };
@@ -230,6 +251,11 @@ const RideDetail = () => {
   const mapCenter: LatLngExpression = driverPos || pickupPos;
   const currentStep = STATUS_STEPS.indexOf(ride.status);
 
+  const isOrganizer = user && ride && ride.riders.length > 0 && 
+    ((ride.riders[0] as any)._id === user.id || (ride.riders[0] as any).id === user.id);
+  const isAdmin = user?.role === 'admin';
+  const canManageRide = isOrganizer || user?.role === 'driver' || isAdmin;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* Header */}
@@ -271,6 +297,37 @@ const RideDetail = () => {
             >
               {ride.status}
             </span>
+            {(isOrganizer || isAdmin) && ride.status !== 'completed' && (
+              <button
+                onClick={handleDeleteRide}
+                disabled={updating}
+                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-xl transition-all shadow-lg flex items-center justify-center disabled:opacity-50"
+                title="Delete Ride"
+              >
+                <Icon icon="mdi:trash-can" className="text-xl" />
+              </button>
+            )}
+            {!isOrganizer && !isAdmin && ride.status === 'pending' && (
+               <button
+                 onClick={async () => {
+                    if (window.confirm("Are you sure you want to leave this ride?")) {
+                      try {
+                        setUpdating(true);
+                        await api.post('/rides/leave', { rideId: ride._id });
+                        navigate('/dashboard');
+                      } catch (err: any) {
+                        alert(err.response?.data?.message || "Failed to leave ride");
+                      } finally {
+                        setUpdating(false);
+                      }
+                    }
+                 }}
+                 disabled={updating}
+                 className="bg-red-100 hover:bg-red-200 text-red-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50"
+               >
+                 Leave Ride
+               </button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -389,18 +446,18 @@ const RideDetail = () => {
 
              {/* Driver Actions or Rider Message */}
              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
-                {user?.role === "driver" ? (
+                {canManageRide ? (
                   <div className="space-y-6">
-                    <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Driver Control</h2>
+                    <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Journey Management</h2>
                     {ride.status !== "completed" && ride.status !== "cancelled" ? (
                       <div className="space-y-3">
-                        {ride.status === "accepted" && (
+                        {(ride.status === "pending" || ride.status === "accepted") && (
                           <button
                             onClick={() => updateStatus("ongoing")}
                             disabled={updating}
                             className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-black transition-all active:scale-95 disabled:opacity-50"
                           >
-                            Picking Up Riders
+                            Start Journey / Pickup
                           </button>
                         )}
                         {ride.status === "ongoing" && (
@@ -409,7 +466,7 @@ const RideDetail = () => {
                             disabled={updating}
                             className="w-full bg-green-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50"
                           >
-                            Drop Off Complete
+                            Trip Complete / Drop Off
                           </button>
                         )}
                       </div>
@@ -420,15 +477,26 @@ const RideDetail = () => {
                 ) : (
                   <div className="space-y-6">
                     <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Your Safety</h2>
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-                          <Icon icon="mdi:shield-check" className="text-2xl" />
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        const socket = getSocket();
+                        if (socket && window.confirm("Trigger SOS? This will alert campus security and share your live location.")) {
+                          socket.emit('sos_trigger', { rideId: ride._id });
+                          alert("Emergency alert sent! Stay calm, security is being notified.");
+                        }
+                      }}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] border-2 border-red-100 bg-red-50 hover:bg-red-100 transition-all group"
+                    >
+                       <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-200 group-hover:animate-pulse">
+                          <Icon icon="mdi:alert-decagram" className="text-2xl" />
                        </div>
-                       <div>
-                          <p className="font-black text-gray-900">SOS Trigger</p>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase">Share live tracking with campus security</p>
+                       <div className="text-left">
+                          <p className="font-black text-red-600">SOS Trigger</p>
+                          <p className="text-[10px] text-red-400 font-bold uppercase">Share live tracking with campus security</p>
                        </div>
-                    </div>
+                    </motion.button>
                   </div>
                 )}
              </div>
@@ -456,17 +524,39 @@ const RideDetail = () => {
                 </div>
               )}
               {/* Riders */}
-              {ride.riders.map((r, idx) => (
-                <div key={(r as any)._id || idx} className="p-4 bg-gray-50 rounded-3xl border border-gray-100 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white text-yellow-600 rounded-2xl flex items-center justify-center font-black shadow-sm">
-                    {(r.isAnonymous ? r.pseudonym : r.name)?.charAt(0) || 'U'}
+              {ride.riders.map((r, idx) => {
+                const segment = ride.riderSegments.find(s => s.userId === (r as any)._id || s.userId === (r as any).id);
+                const isDifferent = segment && (
+                  segment.pickupLocation.address !== ride.pickupLocation.address ||
+                  segment.dropoffLocation.address !== ride.dropoffLocation.address
+                );
+
+                return (
+                  <div key={(r as any)._id || idx} className="p-4 bg-gray-50 rounded-3xl border border-gray-100 flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white text-yellow-600 rounded-2xl flex items-center justify-center font-black shadow-sm">
+                        {(r.isAnonymous ? r.pseudonym : r.name)?.charAt(0) || 'U'}
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-black text-gray-900 leading-none truncate">{r.isAnonymous ? r.pseudonym : r.name}</p>
+                        <p className="text-[9px] uppercase font-black text-gray-400 mt-1">{idx === 0 ? 'Organizer' : 'Passenger'}</p>
+                      </div>
+                    </div>
+                    {isDifferent && (
+                      <div className="bg-white/50 p-3 rounded-2xl border border-gray-100/50 space-y-2">
+                         <div className="flex items-start gap-2">
+                           <Icon icon="mdi:map-marker-radius" className="text-green-500 text-xs mt-0.5" />
+                           <p className="text-[10px] text-gray-600 leading-tight"><span className="font-bold">Pickup:</span> {segment.pickupLocation.address.split(',')[0]}</p>
+                         </div>
+                         <div className="flex items-start gap-2">
+                           <Icon icon="mdi:map-marker-check" className="text-red-500 text-xs mt-0.5" />
+                           <p className="text-[10px] text-gray-600 leading-tight"><span className="font-bold">Dropoff:</span> {segment.dropoffLocation.address.split(',')[0]}</p>
+                         </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="overflow-hidden">
-                    <p className="font-black text-gray-900 leading-none truncate">{r.isAnonymous ? r.pseudonym : r.name}</p>
-                    <p className="text-[9px] uppercase font-black text-gray-400 mt-1">{idx === 0 ? 'Organizer' : 'Passenger'}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
            </div>
         </div>
         {/* Floating Chat Button */}

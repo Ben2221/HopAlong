@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Ride } from '../models/Ride';
 import { Message } from '../models/Message';
+import { calculateDistance } from '../utils/haversine';
 
 // Store connected users: socketId -> userId
 const connectedUsers = new Map<string, string>();
@@ -82,6 +83,18 @@ export const setupSocket = (io: Server) => {
       if (role !== 'rider' && role !== 'admin') return;
       
       try {
+        // Double-tap prevention: check if user already has a pending ride created in the last 10 seconds
+        const recentRide = await Ride.findOne({
+          riders: userId,
+          status: 'pending',
+          createdAt: { $gt: new Date(Date.now() - 10000) }
+        });
+
+        if (recentRide) {
+          console.log(`[Socket] Duplicate ride request ignored for user ${userId}`);
+          return;
+        }
+
         // Create pending ride in DB
         const newRide = new Ride({
           riders: [userId],
@@ -97,7 +110,21 @@ export const setupSocket = (io: Server) => {
           },
           fare: data.fare,
           status: 'pending',
-          isPublic: data.isPublic !== false // default to true for carpooling
+          isPublic: data.isPublic !== false, // default to true for carpooling
+          riderSegments: [{
+            userId: userId as any,
+            pickupLocation: {
+              type: 'Point',
+              coordinates: [data.pickup.lng, data.pickup.lat],
+              address: data.pickup.address || 'Unknown'
+            },
+            dropoffLocation: {
+              type: 'Point',
+              coordinates: [data.dropoff.lng, data.dropoff.lat],
+              address: data.dropoff.address || 'Unknown'
+            },
+            distance: 0 // Will be calculated or we can use a heuristic
+          }]
         });
         
         await newRide.save();
@@ -112,8 +139,14 @@ export const setupSocket = (io: Server) => {
           socket.emit('searching_for_drivers', { message: 'No drivers online. We will notify you when one joins.' });
         }
 
+        // Notify the requester that the ride was created successfully
+        socket.emit('ride_request_success', { rideId: newRide._id });
+
         // Just notify all online drivers (simplification of matching)
         // They can race to accept it
+        const user = await User.findById(userId);
+        if (!user) throw new Error('User not found');
+
         for (const driver of onlineDrivers) {
           const driverSocketId = connectedUsers.get(driver._id.toString());
           if (driverSocketId) {
@@ -123,7 +156,7 @@ export const setupSocket = (io: Server) => {
               dropoff: data.dropoff,
               fare: data.fare,
               riderId: userId,
-              riderName: socket.data.user.isAnonymous ? socket.data.user.pseudonym : socket.data.user.name
+              riderName: user.isAnonymous ? user.pseudonym : user.name
             });
           }
         }
@@ -192,12 +225,20 @@ export const setupSocket = (io: Server) => {
 
     // Handle ride status updates
     socket.on('update_ride_status', async (data: { rideId: string, status: string }) => {
-      if (role !== 'driver') return;
-      
       try {
         const ride = await Ride.findById(data.rideId);
         if (!ride) {
           console.log(`[Socket] Ride ${data.rideId} not found`);
+          return;
+        }
+
+        // Allow if user is driver OR organizer (first rider) OR admin
+        const isOrganizer = ride.riders[0].toString() === userId;
+        const isDriver = ride.driver?.toString() === userId;
+        const isAdmin = role === 'admin';
+
+        if (!isDriver && !isOrganizer && !isAdmin) {
+          console.warn(`[Socket] Unauthorized status update attempt for ride ${data.rideId} by user ${userId}`);
           return;
         }
 
@@ -213,29 +254,40 @@ export const setupSocket = (io: Server) => {
 
         console.log(`[Socket] Ride ${data.rideId} status updated: ${oldStatus} -> ${data.status}`);
 
-        // If completed, deduct fare from riders and pay driver
+        // If completed, deduct fare from riders and pay driver proportionally
         if (data.status === 'completed' && oldStatus !== 'completed') {
           const riderCount = ride.riders.length;
           if (riderCount > 0) {
-            const splitFare = Number((ride.fare / riderCount).toFixed(2));
-            
-            console.log(`[Socket] Completing ride ${data.rideId}. Fare: ${ride.fare}, Split: ${splitFare}, Riders: ${riderCount}`);
+            console.log(`[Socket] Completing ride ${data.rideId}. Total Fare: ${ride.fare}`);
 
-            // Deduct from riders
-            const deductionResult = await User.updateMany(
-              { _id: { $in: ride.riders as any } },
-              { $inc: { walletBalance: -splitFare } }
-            );
-            console.log(`[Socket] Riders deduction result:`, deductionResult);
-
-            // Pay driver (total fare)
-            if (ride.driver) {
-              const driverPaymentResult = await User.findByIdAndUpdate(
-                ride.driver,
-                { $inc: { walletBalance: ride.fare } },
-                { returnDocument: 'after' }
+            // 1. Calculate distances for each segment
+            let totalWeightedDistance = 0;
+            const segmentDistances = ride.riderSegments.map(segment => {
+              const d = calculateDistance(
+                segment.pickupLocation.coordinates[1],
+                segment.pickupLocation.coordinates[0],
+                segment.dropoffLocation.coordinates[1],
+                segment.dropoffLocation.coordinates[0]
               );
-              console.log(`[Socket] Driver payment result for ${ride.driver}:`, !!driverPaymentResult);
+              totalWeightedDistance += d;
+              return { userId: segment.userId, distance: d };
+            });
+
+            console.log(`[Socket] Total Weighted Distance: ${totalWeightedDistance}`);
+
+            // 2. Deduct proportionally from each rider
+            for (const seg of segmentDistances) {
+              const proportion = totalWeightedDistance > 0 ? (seg.distance / totalWeightedDistance) : (1 / riderCount);
+              const riderFare = Number((ride.fare * proportion).toFixed(2));
+              
+              console.log(`[Socket] Rider ${seg.userId} pays ₹${riderFare} for ${seg.distance.toFixed(2)}km`);
+              
+              await User.findByIdAndUpdate(seg.userId, { $inc: { walletBalance: -riderFare } });
+            }
+
+            // 3. Pay driver (total fare)
+            if (ride.driver) {
+              await User.findByIdAndUpdate(ride.driver, { $inc: { walletBalance: ride.fare } });
             }
           } else {
             console.warn(`[Socket] Ride ${data.rideId} completed but has no riders!`);
@@ -246,6 +298,37 @@ export const setupSocket = (io: Server) => {
         io.to(roomName).emit('ride_status_updated', { status: data.status });
       } catch (err) {
         console.error('[Socket] Error in update_ride_status:', err);
+      }
+    });
+
+    // SOS Trigger
+    socket.on('sos_trigger', async (data: { rideId: string }) => {
+      try {
+        const userId = connectedUsers.get(socket.id);
+        const ride = await Ride.findById(data.rideId).populate('riders', 'name pseudonym');
+        const user = await User.findById(userId);
+
+        if (!ride || !user) return;
+
+        console.error(`[SOS] EMERGENCY TRIGGERED by ${user.name} for ride ${data.rideId}`);
+
+        // Broadcast to all connected users (for now, in production this would be admin-only)
+        io.emit('sos_alert', {
+          rideId: data.rideId,
+          userId: user._id,
+          userName: user.isAnonymous ? user.pseudonym : user.name,
+          location: ride.pickupLocation, // Or current driver location if available
+          timestamp: new Date()
+        });
+
+        // Also notify the specific ride room
+        io.to(`ride_${data.rideId}`).emit('emergency_status', {
+          message: 'Emergency services have been notified.',
+          severity: 'high'
+        });
+
+      } catch (error) {
+        console.error('[Socket] Error triggering SOS:', error);
       }
     });
 
