@@ -21,6 +21,7 @@ import PrivacyPolicy from "./pages/Privacy.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import RideHistory from "./pages/RideHistory.tsx";
+import Wallet from "./pages/Wallet.tsx";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,14 @@ if (rootElement) {
                 element={
                   <ProtectedRoute>
                     <RideHistory />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wallet"
+                element={
+                  <ProtectedRoute>
+                    <Wallet />
                   </ProtectedRoute>
                 }
               />

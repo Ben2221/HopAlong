@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "motion/react";
+import { initSocket, getSocket } from "../services/socket";
 
 interface Stats {
   totalUsers: number;
@@ -16,7 +17,7 @@ interface UserData {
   _id: string;
   name: string;
   email: string;
-  role: 'rider' | 'driver' | 'admin';
+  role: 'student' | 'admin';
   walletBalance: number;
   status: 'active' | 'suspended' | 'banned';
   createdAt: string;
@@ -173,10 +174,25 @@ const AdminDashboard = () => {
 
     fetchData();
 
+    // SOS Listener
+    const socket = getSocket() || initSocket(token || "");
+    if (socket) {
+      socket.on('sos_alert', (data: any) => {
+        console.log("[Admin] SOS ALERT RECEIVED:", data);
+        setSosAlert(data);
+      });
+    }
+
     // Live Heartbeat: Refresh data every 30 seconds
     const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      if (socket) socket.off('sos_alert');
+      clearInterval(interval);
+    };
   }, [user, token, navigate]);
+
+  const [sosAlert, setSosAlert] = useState<any>(null);
 
 
   const handleSaveSettings = async (newSettings: GlobalSettings) => {
@@ -283,6 +299,46 @@ const AdminDashboard = () => {
             </div>
           </div>
       </div>
+      
+      <AnimatePresence>
+        {sosAlert && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-red-600 text-white overflow-hidden"
+          >
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center animate-bounce">
+                  <Icon icon="mdi:alert-octagon" className="text-3xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tighter">Emergency SOS Alert!</h3>
+                  <p className="text-sm font-bold text-red-100">
+                    User <span className="text-white underline">{sosAlert.userName}</span> has triggered an SOS for ride <span className="text-white">#{sosAlert.rideId.slice(-6)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => navigate(`/rides/${sosAlert.rideId}`)}
+                  className="bg-white text-red-600 px-6 py-2 rounded-xl font-black hover:bg-red-50 transition-all flex items-center gap-2"
+                >
+                  <Icon icon="mdi:map-marker-alert" />
+                  Locate Ride
+                </button>
+                <button 
+                  onClick={() => setSosAlert(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg"
+                >
+                  <Icon icon="mdi:close" className="text-2xl" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-6 -mt-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -340,8 +396,8 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-4 py-4">
                           <select value={u.role} onChange={(e) => handleRoleChange(u._id, e.target.value)} className="text-sm font-medium outline-none bg-transparent cursor-pointer hover:text-yellow-600" disabled={u._id === user?.id}>
-                            <option value="rider">Rider</option>
-                            <option value="driver">Driver</option>
+                            <option value="student">Student</option>
+                            
                             <option value="admin">Admin</option>
                           </select>
                         </td>

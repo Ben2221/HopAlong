@@ -31,10 +31,10 @@ router.get('/rides', getAllRides);
 router.get('/settings', getGlobalSettings);
 router.patch('/settings', updateGlobalSettings);
 
-export default router;
-
 router.get('/messages', getContactMessages);
 router.patch('/messages/:id', updateContactStatus);
 
 router.patch('/users/:id/role', updateUserRole);
 router.delete('/rides/:id', cancelRideAdmin);
+
+export default router;

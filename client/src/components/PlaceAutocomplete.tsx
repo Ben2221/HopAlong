@@ -5,7 +5,7 @@ import { SuggestedPlace } from "../hooks/usePlaceSuggestions";
 import { useRouteStore } from "../store/routeStore";
 
 interface PlaceAutocompleteProps {
-  label: string;
+  label?: string;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
@@ -14,6 +14,8 @@ interface PlaceAutocompleteProps {
   delay?: number;
   icon?: string;
   locationType: "from" | "to";
+  hideLabel?: boolean;
+  className?: string;
 }
 
 const PlaceAutocomplete = ({
@@ -26,6 +28,8 @@ const PlaceAutocomplete = ({
   delay = 0,
   icon = "mdi:map-marker",
   locationType,
+  hideLabel = false,
+  className = "",
 }: PlaceAutocompleteProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -150,23 +154,25 @@ const PlaceAutocomplete = ({
 
   return (
     <motion.div
-      className="relative w-full"
+      className={`relative w-full ${className}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
     >
-      <label className="block text-gray-700 font-medium mb-2">
-        {label}
-        {isValidInput && (
-          <motion.span
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-block ml-2 text-green-500"
-          >
-            <Icon icon="mdi:check-circle" className="inline text-sm" />
-          </motion.span>
-        )}
-      </label>
+      {!hideLabel && label && (
+        <label className="block text-gray-700 font-medium mb-2">
+          {label}
+          {isValidInput && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="inline-block ml-2 text-green-500"
+            >
+              <Icon icon="mdi:check-circle" className="inline text-sm" />
+            </motion.span>
+          )}
+        </label>
+      )}
       <div
         className={`relative flex items-center border-2 rounded-lg overflow-hidden 
           ${
@@ -215,15 +221,17 @@ const PlaceAutocomplete = ({
         )}
       </div>
 
-      {/* Fixed-height container for validation messages */}
-      <div className="h-6 min-h-6">
-        {!isFromSuggestion && value && (
-          <div className="text-yellow-600 text-sm mt-1">
-            <Icon icon="mdi:information" className="inline-block mr-1" />
-            Please select a location from the suggestions
-          </div>
-        )}
-      </div>
+      {/* Fixed-height container for validation messages - only show if not hidden */}
+      {!hideLabel && (
+        <div className="h-6 min-h-6">
+          {!isFromSuggestion && value && (
+            <div className="text-yellow-600 text-sm mt-1">
+              <Icon icon="mdi:information" className="inline-block mr-1" />
+              Please select a location from the suggestions
+            </div>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {showSuggestions && (value || suggestions.length > 0) && (

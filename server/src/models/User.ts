@@ -4,11 +4,14 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password?: string;
-  role: 'rider' | 'driver' | 'admin';
+  role: 'student' | 'admin';
   isAnonymous: boolean;
   pseudonym: string;
   walletBalance: number;
   status: 'active' | 'suspended' | 'banned';
+  batchYear?: number;
+  department?: string;
+  trustScore: number;
   socialLinks?: {
     twitter?: string;
     github?: string;
@@ -27,11 +30,14 @@ const userSchema = new Schema<IUser>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['rider', 'driver', 'admin'], required: true },
+  role: { type: String, enum: ['student', 'admin'], default: 'student', required: true },
   isAnonymous: { type: Boolean, default: false },
   pseudonym: { type: String, required: true },
   walletBalance: { type: Number, default: 1000 }, // Starting balance for demo
   status: { type: String, enum: ['active', 'suspended', 'banned'], default: 'active' },
+  batchYear: { type: Number },
+  department: { type: String },
+  trustScore: { type: Number, default: 4.5 }, // Initial trust score
   socialLinks: {
     twitter: { type: String },
     github: { type: String },

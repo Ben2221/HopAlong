@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Map from "../components/Map";
 import { usePlaceSuggestions } from "../hooks/usePlaceSuggestions";
 import PlaceAutocomplete from "../components/PlaceAutocomplete";
@@ -15,14 +15,49 @@ import { getSocket, initSocket } from "../services/socket";
 
 const CreateRide = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, token } = useAuthStore();
   const resetRouteStore = useRouteStore((state) => state.resetOnPageLoad);
+  const setStoreFrom = useRouteStore((state) => state.setFrom);
+  const setStoreTo = useRouteStore((state) => state.setTo);
   const storeFrom = useRouteStore((state) => state.from);
   const storeTo = useRouteStore((state) => state.to);
 
   useEffect(() => {
     resetRouteStore();
-  }, [resetRouteStore]);
+    
+    // Check if we have state from navigation
+    const state = location.state as any;
+    if (state) {
+      if (state.from) {
+        setFrom(state.from);
+        setFromQuery(state.from);
+      }
+      if (state.to) {
+        setTo(state.to);
+        setToQuery(state.to);
+      }
+      if (state.date) {
+        setSelectedDateTime(new Date(state.date));
+      }
+      if (state.fromLoc) {
+        setStoreFrom({
+          name: state.fromLoc.name,
+          formattedAddress: state.fromLoc.formatted,
+          latitude: state.fromLoc.lat,
+          longitude: state.fromLoc.lon
+        });
+      }
+      if (state.toLoc) {
+        setStoreTo({
+          name: state.toLoc.name,
+          formattedAddress: state.toLoc.formatted,
+          latitude: state.toLoc.lat,
+          longitude: state.toLoc.lon
+        });
+      }
+    }
+  }, [resetRouteStore, location.state, setStoreFrom, setStoreTo]);
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -73,7 +108,8 @@ const CreateRide = () => {
               pickupLat: storeFrom.latitude,
               pickupLng: storeFrom.longitude,
               dropoffLat: storeTo.latitude,
-              dropoffLng: storeTo.longitude
+              dropoffLng: storeTo.longitude,
+              date: selectedDateTime?.toISOString()
             }
           });
           setNearbyRides(response.data);
@@ -85,7 +121,7 @@ const CreateRide = () => {
       }
     };
     fetchNearby();
-  }, [storeFrom, storeTo]);
+  }, [storeFrom, storeTo, selectedDateTime]);
 
   const handleJoinExisting = async (rideId: string) => {
     if (!storeFrom || !storeTo || isSubmitting) return;
@@ -111,51 +147,81 @@ const CreateRide = () => {
     setSelectedDateTime(dateTime);
   }, []);
 
+  // Register socket listeners once on mount
+  useEffect(() => {
+    const socket = getSocket() || initSocket(token || "");
+    
+    const handleSuccess = (data: { rideId: string }) => {
+      console.log("[Socket] Success received in useEffect:", data);
+      setIsSubmitting(false);
+      navigate(`/rides/${data.rideId}`);
+    };
+
+    const handleFailure = (data: { message: string }) => {
+      console.error("[Socket] Failure received in useEffect:", data);
+      setIsSubmitting(false);
+      alert(data.message || "Failed to create ride");
+    };
+
+    socket.on('ride_request_success', handleSuccess);
+    socket.on('ride_request_failed', handleFailure);
+
+    return () => {
+      socket.off('ride_request_success', handleSuccess);
+      socket.off('ride_request_failed', handleFailure);
+    };
+  }, [token, navigate]);
+
   const handleConfirmRide = async () => {
-    if (!selectedDateTime || isSubmitting || !storeFrom || !storeTo || !token) return;
+    if (!selectedDateTime || isSubmitting || !storeFrom || !storeTo || !token) {
+      console.warn("[CreateRide] Missing required fields for ride creation");
+      return;
+    }
 
     setIsSubmitting(true);
     
     try {
       // 1. Get fare estimate
+      console.log("[CreateRide] Fetching fare estimate...");
       const response = await api.post('/rides/estimate', {
         pickupLocation: { lat: storeFrom.latitude, lng: storeFrom.longitude },
         dropoffLocation: { lat: storeTo.latitude, lng: storeTo.longitude }
       });
 
       const fare = response.data.fare;
+      console.log("[CreateRide] Fare estimate received:", fare);
 
       // 2. Initialize socket if needed
       const socket = getSocket() || initSocket(token);
 
-      // 3. Listen for success to navigate directly (Register BEFORE emitting)
-      const handleSuccess = (data: { rideId: string }) => {
-        socket.off('ride_request_success', handleSuccess);
-        navigate(`/rides/${data.rideId}`);
-      };
-
-      socket.on('ride_request_success', handleSuccess);
-
-      // 4. Emit request_ride
+      // 3. Emit request_ride
+      console.log("[Socket] Emitting request_ride with data:", {
+        pickup: storeFrom.name,
+        dropoff: storeTo.name,
+        fare,
+        departureTime: selectedDateTime
+      });
+      
       socket.emit('request_ride', {
         pickup: { lat: storeFrom.latitude, lng: storeFrom.longitude, address: storeFrom.name },
         dropoff: { lat: storeTo.latitude, lng: storeTo.longitude, address: storeTo.name },
         fare,
         isPublic,
-        maxRiders
+        maxRiders,
+        departureTime: selectedDateTime
       });
 
-      // Timeout fallback to dashboard if socket event takes too long
+      // 4. Fallback timeout
       setTimeout(() => {
-        socket.off('ride_request_success', handleSuccess);
-        // Only navigate if we're still on the create page (prevents double nav)
-        if (window.location.pathname === '/create-ride') {
-          navigate("/dashboard");
+        if (isSubmitting) {
+           console.warn("[CreateRide] Request is still submitting after 15s. Redirecting to dashboard as fallback.");
+           setIsSubmitting(false);
+           navigate("/dashboard");
         }
-      }, 5000);
+      }, 15000);
 
     } catch (err: any) {
-      console.error("Failed to create ride:", err);
+      console.error("[CreateRide] Error in handleConfirmRide:", err);
       alert(err.response?.data?.message || "Failed to create ride. Please try again.");
       setIsSubmitting(false);
     }
@@ -311,7 +377,7 @@ const CreateRide = () => {
 
         {/* Nearby Available Rides */}
         <AnimatePresence>
-          {isLocationSelectionValid && !showTimePicker && (
+          {isLocationSelectionValid && selectedDateTime && !showTimePicker && (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -342,9 +408,17 @@ const CreateRide = () => {
                         <h4 className="font-black text-gray-900 truncate max-w-[200px]">
                           {ride.pickupLocation.address.split(',')[0]} → {ride.dropoffLocation.address.split(',')[0]}
                         </h4>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Icon icon="mdi:account-group" className="text-gray-400" />
-                          <span className="text-xs font-bold text-gray-500">{ride.maxRiders - ride.riders.length} seats available</span>
+                        <div className="flex items-center gap-4 mt-2">
+                          <div className="flex items-center gap-1">
+                             <Icon icon="mdi:clock-outline" className="text-gray-400" />
+                             <span className="text-xs font-bold text-gray-500">
+                               {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                             </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Icon icon="mdi:account-group" className="text-gray-400" />
+                            <span className="text-xs font-bold text-gray-500">{ride.maxRiders - ride.riders.length} seats available</span>
+                          </div>
                         </div>
                       </div>
                       <button

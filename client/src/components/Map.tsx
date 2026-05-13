@@ -24,6 +24,16 @@ const originIcon = new Icon({
   popupAnchor: [1, -34],
 });
 
+// Ride marker (blue)
+const rideIcon = new Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+  shadowUrl: markerShadowPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
 // Destination marker (red)
 const destinationIcon = new Icon({
   iconUrl:
@@ -85,7 +95,11 @@ const FitBounds = ({
   return null;
 };
 
-const Map = () => {
+interface MapProps {
+  rides?: any[];
+}
+
+const Map = ({ rides = [] }: MapProps) => {
   const defaultPosition = [9.754833, 76.650099] as LatLngExpression;
   const { from, to } = useRouteStore();
 
@@ -130,6 +144,25 @@ const Map = () => {
           </Popup>
         </Marker>
       )}
+
+      {/* Available Rides Markers */}
+      {rides.map(ride => (
+        <Marker 
+          key={ride._id}
+          position={[ride.pickupLocation.coordinates[1], ride.pickupLocation.coordinates[0]]}
+          icon={rideIcon}
+        >
+          <Popup>
+            <strong className="text-blue-600">Available Ride</strong>
+            <br />
+            <strong>From:</strong> {ride.pickupLocation.address.split(',')[0]}
+            <br />
+            <strong>To:</strong> {ride.dropoffLocation.address.split(',')[0]}
+            <br />
+            <strong>Time:</strong> {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Popup>
+        </Marker>
+      ))}
 
       {/* Route Line */}
       <RouteLine from={fromPosition} to={toPosition} />

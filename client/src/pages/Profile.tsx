@@ -119,6 +119,7 @@ const Profile = () => {
                   <div className="flex gap-2">
                     <input 
                       type="number" 
+                      step="any"
                       value={walletAmount}
                       onChange={(e) => setWalletAmount(e.target.value)}
                       className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400 outline-none"

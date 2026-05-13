@@ -10,7 +10,7 @@ import api from "../services/api";
 const loadingMessages = [
   "Revving our engines...",
   "Calculating the optimal route to avoid traffic...",
-  "Scanning for nearby drivers...",
+  "Scanning for nearby hosts...",
   "Warming up the seat heaters...",
   "Assigning your ride a cool codename...",
 ];

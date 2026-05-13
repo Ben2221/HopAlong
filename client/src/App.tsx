@@ -99,7 +99,7 @@ function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
 
   return (
-    <div className="pt-24 pb-16 md:py-32 relative overflow-hidden">
+    <div className="pt-24 pb-8 md:pt-32 md:pb-12 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-yellow-100 to-white opacity-60 z-0"></div>
 
       <motion.div
@@ -196,7 +196,7 @@ function Hero() {
 
 function About() {
   return (
-    <section id="about" className="py-24 bg-white relative overflow-hidden">
+    <section id="about" className="py-12 md:py-16 bg-white relative overflow-hidden">
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <motion.div

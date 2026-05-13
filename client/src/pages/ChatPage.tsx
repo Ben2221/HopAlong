@@ -15,7 +15,7 @@ interface RideData {
   pickupLocation: { address: string };
   dropoffLocation: { address: string };
   riders: any[];
-  driver?: any;
+  host?: any;
   status: string;
 }
 
@@ -86,7 +86,7 @@ const ChatPage = () => {
     }
   };
 
-  const memberCount = (ride?.riders?.length || 0) + (ride?.driver ? 1 : 0);
+  const memberCount = (ride?.riders?.length || 0) + (ride?.host ? 1 : 0);
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 relative overflow-hidden">

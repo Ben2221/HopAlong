@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import { AuthRequest } from '../utils/authMiddleware';
 import { Ride } from '../models/Ride';
@@ -11,15 +12,19 @@ export const getHistory = async (req: AuthRequest, res: Response): Promise<void>
     const role = req.user.role;
 
     let rides;
-    if (role === 'rider' || role === 'admin') {
-      rides = await Ride.find({ riders: userId }).sort({ createdAt: -1 }).populate('driver riders', 'name pseudonym isAnonymous');
+    if (role === 'student' || role === 'admin') {
+      rides = await Ride.find({ riders: userId }).sort({ createdAt: -1 }).populate('host riders', 'name pseudonym isAnonymous');
     } else {
-      rides = await Ride.find({ driver: userId }).sort({ createdAt: -1 }).populate('riders', 'name pseudonym isAnonymous');
+      rides = await Ride.find({ host: userId }).sort({ createdAt: -1 }).populate('riders', 'name pseudonym isAnonymous');
     }
 
     res.json(rides);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching ride history', error });
+  } catch (error: any) {
+    console.error('Ride History 500 Error:', error);
+    res.status(500).json({ 
+      message: 'Error fetching ride history', 
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 };
 
@@ -56,7 +61,7 @@ export const estimateFare = async (req: AuthRequest, res: Response): Promise<voi
 export const getRideById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const ride = await Ride.findById(id).populate('riders driver', 'name email role pseudonym isAnonymous');
+    const ride = await Ride.findById(id).populate('riders host', 'name email role pseudonym isAnonymous');
     
     if (!ride) {
       res.status(404).json({ message: 'Ride not found' });
@@ -71,17 +76,38 @@ export const getRideById = async (req: AuthRequest, res: Response): Promise<void
 
 export const getAvailableRides = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { pickupLat, pickupLng, dropoffLat, dropoffLng } = req.query;
+    const { pickupLat, pickupLng, dropoffLat, dropoffLng, date } = req.query;
 
-    // Find public rides that are pending or accepted
-    const rides = await Ride.find({
+    const query: any = {
       isPublic: true,
       status: { $in: ['pending', 'accepted'] },
-    }).populate('riders', 'name pseudonym isAnonymous');
+    };
 
-    // If no search parameters, return all available rides with space
+    if (date) {
+      const searchDate = new Date(date as string);
+      const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
+      query.departureTime = { $gte: startOfDay, $lte: endOfDay };
+    }
+
+    // Find public rides that are pending or accepted
+    const rides = await Ride.find(query).populate('riders', '_id name pseudonym isAnonymous');
+
+    const userId = req.user.userId;
+
+    // Filter out rides where the current user is already a rider
+    const availableRidesList = rides.filter(ride => 
+      ride.riders.length < ride.maxRiders && 
+      !ride.riders.some((r: any) => {
+        if (!r) return false;
+        const rId = r._id ? r._id.toString() : r.toString();
+        return rId === userId;
+      })
+    );
+
+    // If no search parameters, return the filtered list
     if (!pickupLat || !pickupLng || !dropoffLat || !dropoffLng) {
-      res.json(rides.filter(ride => ride.riders.length < ride.maxRiders));
+      res.json(availableRidesList);
       return;
     }
 
@@ -90,19 +116,14 @@ export const getAvailableRides = async (req: AuthRequest, res: Response): Promis
     const dLat = Number(dropoffLat);
     const dLng = Number(dropoffLng);
 
-    // Filter rides using Detour Heuristic: 
-    // Distance(RideStart -> ReqStart) + Distance(ReqStart -> ReqEnd) + Distance(ReqEnd -> RideEnd) 
-    // should be close to Distance(RideStart -> RideEnd)
-    const availableRides = [];
-    for (const ride of rides) {
-      if (ride.riders.length >= ride.maxRiders) continue;
-
+    // Filter rides using Detour Heuristic
+    const finalRides = [];
+    for (const ride of availableRidesList) {
       const rStartLat = ride.pickupLocation.coordinates[1];
       const rStartLng = ride.pickupLocation.coordinates[0];
       const rEndLat = ride.dropoffLocation.coordinates[1];
       const rEndLng = ride.dropoffLocation.coordinates[0];
 
-      // We use road distance for more accurate detour calculation
       const [d1, d2, d3, dTotal] = await Promise.all([
         getRoadDistance(rStartLat, rStartLng, pLat, pLng),
         getRoadDistance(pLat, pLng, dLat, dLng),
@@ -112,13 +133,12 @@ export const getAvailableRides = async (req: AuthRequest, res: Response): Promis
 
       const detour = (d1 + d2 + d3) - dTotal;
       
-      // Heuristic: If detour is less than 1.5km or less than 20% of total distance
       if (detour < 1.5 || detour < (dTotal * 0.2)) {
-        availableRides.push(ride);
+        finalRides.push(ride);
       }
     }
     
-    res.json(availableRides);
+    res.json(finalRides);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching available rides', error });
   }
@@ -145,11 +165,12 @@ export const joinRide = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    ride.riders.push(userId as any);
+    const userObjId = new mongoose.Types.ObjectId(userId as string);
+    ride.riders.push(userObjId as any);
     
     // Add rider segment for distance-based pricing
     ride.riderSegments.push({
-      userId: userId as any,
+      userId: userObjId as any,
       pickupLocation: pickupLocation ? {
         type: 'Point',
         coordinates: [pickupLocation.lng, pickupLocation.lat],
@@ -184,7 +205,7 @@ export const deleteRide = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Only organizer (first rider) or admin can delete
+    // Only organizer or admin can delete
     const organizerId = ride.riders[0].toString();
     if (organizerId !== userId && role !== 'admin') {
       res.status(403).json({ message: 'Not authorized to delete this ride' });
@@ -220,7 +241,7 @@ export const leaveRide = async (req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    // Check if user is organizer (first rider)
+    // Check if user is organizer
     const organizerId = ride.riders[0].toString();
     if (organizerId === userId) {
       res.status(400).json({ message: 'Organizer cannot leave. Please delete the ride instead.' });

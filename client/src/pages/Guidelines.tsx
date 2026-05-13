@@ -59,7 +59,7 @@ const SafetyGuidelines = () => {
             {
               icon: "mdi:car-info",
               title: "Vehicle Safety",
-              desc: "Drivers must maintain vehicle health. All passengers are required to use seatbelts and respect the driver's vehicle.",
+              desc: "Drivers must maintain vehicle health. All passengers are required to use seatbelts and respect the host's vehicle.",
               color: "bg-green-500"
             },
             {

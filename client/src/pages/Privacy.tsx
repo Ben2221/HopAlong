@@ -84,7 +84,7 @@ const PrivacyPolicy = () => {
                <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Location Privacy</h2>
                   <p className="text-lg leading-relaxed">
-                    Location tracking is only active when you are a driver on an active ride or a rider requesting 
+                    Location tracking is only active when you are a host on an active ride or a rider requesting 
                     a ride. We do not track your location in the background when the app is not in use for a journey.
                   </p>
                </div>

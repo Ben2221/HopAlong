@@ -25,6 +25,8 @@ export const updatePrivacy = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
+import { Transaction } from '../models/Transaction';
+
 export const updateWallet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { amount } = req.body;
@@ -35,6 +37,16 @@ export const updateWallet = async (req: AuthRequest, res: Response): Promise<voi
     }
     user.walletBalance += amount;
     await user.save();
+
+    // Create transaction log
+    await Transaction.create({
+      userId: user._id,
+      amount,
+      type: 'credit',
+      status: 'completed',
+      description: 'Wallet top-up (Profile)'
+    });
+
     res.json({ walletBalance: user.walletBalance });
   } catch (error) {
     res.status(500).json({ message: 'Error updating wallet', error });

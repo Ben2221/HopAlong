@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
 import { initSocket, getSocket } from "../services/socket";
@@ -12,6 +12,7 @@ import {
   Marker,
   Popup,
   useMap,
+  Polyline,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Icon as LeafletIcon, LatLngExpression } from "leaflet";
@@ -33,7 +34,7 @@ const dropoffIcon = new LeafletIcon({
   iconAnchor: [12, 41],
 });
 
-const driverIcon = new LeafletIcon({
+const hostIcon = new LeafletIcon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
   shadowUrl: markerShadowPng,
@@ -41,7 +42,7 @@ const driverIcon = new LeafletIcon({
   iconAnchor: [12, 41],
 });
 
-// Auto-pan the map to driver location when it updates
+// Auto-pan the map to host location when it updates
 function PanToDriver({ position }: { position: LatLngExpression | null }) {
   const map = useMap();
   useEffect(() => {
@@ -77,8 +78,10 @@ interface RideData {
     dropoffLocation: { address: string; coordinates: [number, number] };
     distance: number;
   }[];
-  driver?: { id: string; name: string; email: string };
+  host?: { id: string; name: string; email: string };
   maxRiders: number;
+  departureTime: string;
+  createdAt: string;
 }
 
 const STATUS_STEPS = ["pending", "accepted", "ongoing", "completed"];
@@ -89,7 +92,7 @@ const RideDetail = () => {
   const { token, user } = useAuthStore();
 
   const [ride, setRide] = useState<RideData | null>(null);
-  const [driverLocation, setDriverLocation] = useState<{
+  const [hostLocation, setHostLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
@@ -125,13 +128,17 @@ const RideDetail = () => {
       setRide((prev) => (prev ? { ...prev, status: data.status } : null));
     });
 
-    socket.on("driver_moved", (data: { lat: number; lng: number }) => {
-      setDriverLocation(data);
+    socket.on("host_moved", (data: { lat: number; lng: number }) => {
+      setHostLocation(data);
     });
 
     socket.on("rider_joined", () => {
       // Re-fetch ride to get updated list of riders
       fetchRide();
+    });
+    
+    socket.on("emergency_status", (data: { message: string }) => {
+      setSosAlert(data.message);
     });
 
     // Notify room that we've joined
@@ -139,10 +146,13 @@ const RideDetail = () => {
 
     return () => {
       socket.off("ride_status_updated");
-      socket.off("driver_moved");
+      socket.off("host_moved");
       socket.off("rider_joined");
+      socket.off("emergency_status");
     };
   }, [id, token, user, navigate]);
+
+  const [sosAlert, setSosAlert] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDistances = async () => {
@@ -196,15 +206,15 @@ const RideDetail = () => {
   useEffect(() => {
     let watchId: number | null = null;
     
-    if (user?.role === 'driver' && (ride?.status === 'accepted' || ride?.status === 'ongoing')) {
+    if (user?.role === 'student' && (ride?.status === 'accepted' || ride?.status === 'ongoing')) {
       const socket = getSocket();
       if (socket && navigator.geolocation) {
         console.log("[Tracking] Starting live location broadcast...");
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            socket.emit('driver_location', locationData);
-            setDriverLocation(locationData);
+            socket.emit('host_location', locationData);
+            setHostLocation(locationData);
           },
           (err) => console.error("[Tracking] Geolocation error:", err),
           { enableHighAccuracy: true }
@@ -219,11 +229,11 @@ const RideDetail = () => {
 
   // Rough ETA calculation (Distance in KM / Avg Campus Speed 20km/h)
   const calculateETA = () => {
-    if (!driverLocation || !ride) return null;
+    if (!hostLocation || !ride) return null;
     
     // Simple Euclidean distance for MVP (could use Haversine)
-    const latDiff = ride.dropoffLocation.coordinates[1] - driverLocation.lat;
-    const lngDiff = ride.dropoffLocation.coordinates[0] - driverLocation.lng;
+    const latDiff = ride.dropoffLocation.coordinates[1] - hostLocation.lat;
+    const lngDiff = ride.dropoffLocation.coordinates[0] - hostLocation.lng;
     const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // Approx km
     
     const timeInMinutes = Math.round((distance / 20) * 60) + 2; // +2 mins buffer
@@ -269,18 +279,17 @@ const RideDetail = () => {
     ride?.dropoffLocation?.coordinates?.[1] || 0,
     ride?.dropoffLocation?.coordinates?.[0] || 0,
   ];
-  const driverPos: LatLngExpression | null = driverLocation
-    ? [driverLocation.lat, driverLocation.lng]
+  const hostPos: LatLngExpression | null = hostLocation
+    ? [hostLocation.lat, hostLocation.lng]
     : null;
 
   // Ensure mapCenter is never invalid
-  const mapCenter: LatLngExpression = driverPos || pickupPos;
+  const mapCenter: LatLngExpression = hostPos || pickupPos;
   const currentStep = STATUS_STEPS.indexOf(ride.status);
 
   const isOrganizer = user && ride && ride.riders.length > 0 && 
     ((ride.riders[0] as any)._id === user.id || (ride.riders[0] as any).id === user.id);
   const isAdmin = user?.role === 'admin';
-  const canManageRide = isOrganizer || user?.role === 'driver' || isAdmin;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -301,7 +310,13 @@ const RideDetail = () => {
             </button>
             <div>
               <h1 className="text-2xl font-black text-white tracking-tight">Active Journey</h1>
-              <p className="text-yellow-100 text-xs font-bold uppercase tracking-widest opacity-80">Ride ID: {ride._id.slice(-6)}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-yellow-100 text-xs font-bold uppercase tracking-widest opacity-80">ID: {ride._id.slice(-6)}</p>
+                <span className="text-white/30">•</span>
+                <p className="text-yellow-100 text-xs font-bold uppercase tracking-widest opacity-80">
+                  {new Date(ride.departureTime).toLocaleDateString()} @ {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -333,7 +348,7 @@ const RideDetail = () => {
                 <Icon icon="mdi:trash-can" className="text-xl" />
               </button>
             )}
-            {!isOrganizer && !isAdmin && ride.status === 'pending' && (
+            {!isOrganizer && !isAdmin && (ride.status === 'pending' || ride.status === 'accepted') && (
                <button
                  onClick={async () => {
                     if (window.confirm("Are you sure you want to leave this ride?")) {
@@ -357,6 +372,35 @@ const RideDetail = () => {
           </div>
         </div>
       </motion.div>
+      
+      <AnimatePresence>
+        {sosAlert && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-red-600 text-white shadow-lg relative z-[100]"
+          >
+            <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-bounce">
+                  <Icon icon="mdi:alert-octagon" className="text-2xl" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tighter">Emergency Alert</h3>
+                  <p className="text-sm font-bold text-red-100">{sosAlert}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSosAlert(null)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <Icon icon="mdi:close" className="text-xl" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
         {/* Status Progress Bar */}
@@ -427,24 +471,48 @@ const RideDetail = () => {
               />
               <Marker position={pickupPos} icon={pickupIcon}>
                 <Popup className="custom-popup">
-                  <p className="font-black">Pickup Point</p>
+                  <p className="font-black">Main Pickup</p>
                   <p className="text-xs text-gray-500">{ride?.pickupLocation?.address}</p>
                 </Popup>
               </Marker>
               <Marker position={dropoffPos} icon={dropoffIcon}>
                 <Popup>
-                  <p className="font-black">Dropoff Point</p>
+                  <p className="font-black">Main Dropoff</p>
                   <p className="text-xs text-gray-500">{ride?.dropoffLocation?.address}</p>
                 </Popup>
               </Marker>
-              {driverPos && (
-                <Marker position={driverPos} icon={driverIcon}>
+
+              {/* Individual Passenger Segments */}
+              {ride.riderSegments?.map((segment, idx) => (
+                <React.Fragment key={idx}>
+                  {/* Skip if it matches main pickup/dropoff exactly to avoid overlap clutter */}
+                  {!(segment.pickupLocation.coordinates[1] === pickupPos[0] && segment.pickupLocation.coordinates[0] === pickupPos[1]) && (
+                    <Marker position={[segment.pickupLocation.coordinates[1], segment.pickupLocation.coordinates[0]]} icon={pickupIcon}>
+                      <Popup>
+                        <p className="font-black text-xs">Passenger Pickup</p>
+                        <p className="text-[10px] text-gray-500">{segment.pickupLocation.address}</p>
+                      </Popup>
+                    </Marker>
+                  )}
+                  {!(segment.dropoffLocation.coordinates[1] === dropoffPos[0] && segment.dropoffLocation.coordinates[0] === dropoffPos[1]) && (
+                    <Marker position={[segment.dropoffLocation.coordinates[1], segment.dropoffLocation.coordinates[0]]} icon={dropoffIcon}>
+                      <Popup>
+                        <p className="font-black text-xs">Passenger Dropoff</p>
+                        <p className="text-[10px] text-gray-500">{segment.dropoffLocation.address}</p>
+                      </Popup>
+                    </Marker>
+                  )}
+                </React.Fragment>
+              ))}
+              {hostPos && (
+                <Marker position={hostPos} icon={hostIcon}>
                   <Popup>
                     <p className="font-black">Driver is here</p>
                   </Popup>
                 </Marker>
               )}
-              <PanToDriver position={driverPos} />
+              <PanToDriver position={hostPos} />
+              <RouteLine from={pickupPos} to={dropoffPos} />
             </MapContainer>
           </div>
 
@@ -478,8 +546,36 @@ const RideDetail = () => {
              </div>
 
              {/* Driver Actions or Rider Message */}
+             {/* Safety Actions - ALWAYS VISIBLE FOR ALL */}
              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
-                {canManageRide ? (
+                <div className="space-y-6">
+                    <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Your Safety</h2>
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        const socket = getSocket();
+                        if (socket && window.confirm("Trigger SOS? This will alert campus security and all other passengers.")) {
+                          socket.emit('sos_trigger', { rideId: ride._id });
+                          alert("Emergency alert sent! Stay calm, security and other members are being notified.");
+                        }
+                      }}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] border-2 border-red-100 bg-red-50 hover:bg-red-100 transition-all group"
+                    >
+                       <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-200 group-hover:animate-pulse">
+                          <Icon icon="mdi:alert-decagram" className="text-2xl" />
+                       </div>
+                       <div className="text-left">
+                          <p className="font-black text-red-600">SOS Trigger</p>
+                          <p className="text-[10px] text-red-400 font-bold uppercase">Alert campus security & members</p>
+                       </div>
+                    </motion.button>
+                </div>
+             </div>
+
+             {/* Journey Management - ONLY ORGANIZER or ADMIN */}
+             {(isOrganizer || isAdmin) && (
+               <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
                   <div className="space-y-6">
                     <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Journey Management</h2>
                     {ride.status !== "completed" && ride.status !== "cancelled" ? (
@@ -507,32 +603,8 @@ const RideDetail = () => {
                       <p className="text-center font-bold text-gray-400 py-4 italic">Ride Concluded</p>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    <h2 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Your Safety</h2>
-                    <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        const socket = getSocket();
-                        if (socket && window.confirm("Trigger SOS? This will alert campus security and share your live location.")) {
-                          socket.emit('sos_trigger', { rideId: ride._id });
-                          alert("Emergency alert sent! Stay calm, security is being notified.");
-                        }
-                      }}
-                      className="w-full flex items-center gap-4 p-4 rounded-[24px] border-2 border-red-100 bg-red-50 hover:bg-red-100 transition-all group"
-                    >
-                       <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-200 group-hover:animate-pulse">
-                          <Icon icon="mdi:alert-decagram" className="text-2xl" />
-                       </div>
-                       <div className="text-left">
-                          <p className="font-black text-red-600">SOS Trigger</p>
-                          <p className="text-[10px] text-red-400 font-bold uppercase">Share live tracking with campus security</p>
-                       </div>
-                    </motion.button>
-                  </div>
-                )}
-             </div>
+               </div>
+             )}
           </div>
         </div>
 
@@ -540,18 +612,18 @@ const RideDetail = () => {
         <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100">
            <div className="flex items-center justify-between mb-8">
               <h2 className="font-black text-gray-900 text-xl tracking-tight">Trip Members</h2>
-              <span className="bg-gray-100 px-4 py-1.5 rounded-full text-xs font-black text-gray-500 uppercase tracking-widest">{ride.riders.length + (ride.driver ? 1 : 0)} Total</span>
+              <span className="bg-gray-100 px-4 py-1.5 rounded-full text-xs font-black text-gray-500 uppercase tracking-widest">{ride.riders.length + (ride.host ? 1 : 0)} Total</span>
            </div>
            
            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Driver First if exists */}
-              {ride.driver && typeof ride.driver === 'object' && 'name' in (ride.driver as any) && (
+              {ride.host && typeof ride.host === 'object' && 'name' in (ride.host as any) && (
                 <div className="p-4 bg-blue-50 rounded-3xl border border-blue-100 flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black shadow-lg">
-                    {(ride.driver as any).name?.charAt(0) || 'D'}
+                    {(ride.host as any).name?.charAt(0) || 'D'}
                   </div>
                   <div>
-                    <p className="font-black text-blue-900 leading-none">{(ride.driver as any).name}</p>
+                    <p className="font-black text-blue-900 leading-none">{(ride.host as any).name}</p>
                     <p className="text-[9px] uppercase font-black text-blue-400 mt-1">Certified Driver</p>
                   </div>
                 </div>
@@ -606,6 +678,48 @@ const RideDetail = () => {
         )}
       </div>
     </div>
+  );
+};
+
+const RouteLine = ({ from, to }: { from: LatLngExpression | null; to: LatLngExpression | null }) => {
+  const [positions, setPositions] = useState<LatLngExpression[]>([]);
+
+  useEffect(() => {
+    if (from && to) {
+      const fetchRoute = async () => {
+        try {
+          const [fLat, fLng] = from as [number, number];
+          const [tLat, tLng] = to as [number, number];
+          const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${fLng},${fLat};${tLng},${tLat}?overview=full&geometries=geojson`
+          );
+          const data = await response.json();
+          if (data.routes && data.routes[0]) {
+            const coords = data.routes[0].geometry.coordinates.map(
+              (c: [number, number]) => [c[1], c[0]] as LatLngExpression
+            );
+            setPositions(coords);
+          }
+        } catch (error) {
+          console.error("Routing error:", error);
+          setPositions([from, to]);
+        }
+      };
+      fetchRoute();
+    } else {
+      setPositions([]);
+    }
+  }, [from, to]);
+
+  if (positions.length === 0) return null;
+
+  return (
+    <Polyline 
+      positions={positions} 
+      color="#FBBF24" 
+      weight={5} 
+      opacity={0.8}
+    />
   );
 };
 

@@ -138,13 +138,13 @@ const ChatHeader = ({
                         </p>
                       </div>
                     ))}
-                    {ride?.driver && (
+                    {ride?.host && (
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-xs font-black text-blue-600">
-                          {ride.driver.name?.charAt(0) || "D"}
+                          {ride.host.name?.charAt(0) || "D"}
                         </div>
                         <p className="font-bold text-blue-700 text-sm">
-                          {ride.driver.name} (Driver)
+                          {ride.host.name} (Host)
                         </p>
                       </div>
                     )}

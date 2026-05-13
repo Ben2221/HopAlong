@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#151d1e",
+                        "primary": "#e1fdff",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "background": "#0d1515",
+                        "on-tertiary-container": "#5e6060",
+                        "error": "#ffb4ab",
+                        "secondary": "#ebb2ff",
+                        "on-primary-fixed-variant": "#004f54",
+                        "on-secondary-fixed-variant": "#74009f",
+                        "secondary-fixed-dim": "#ebb2ff",
+                        "secondary-fixed": "#f8d8ff",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-background": "#dce4e4",
+                        "inverse-on-surface": "#2a3232",
+                        "on-surface": "#dce4e4",
+                        "on-secondary": "#520072",
+                        "on-tertiary": "#2f3131",
+                        "on-error": "#690005",
+                        "on-surface-variant": "#b9cacb",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "on-primary-container": "#006a71",
+                        "on-primary": "#00363a",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#fff6fc",
+                        "surface-bright": "#333b3b",
+                        "surface-container-highest": "#2e3637",
+                        "surface-container": "#192122",
+                        "inverse-primary": "#00696f",
+                        "surface-tint": "#00dbe7",
+                        "surface-container-high": "#232b2c",
+                        "outline-variant": "#3a494b",
+                        "primary-fixed-dim": "#00dbe7",
+                        "secondary-container": "#b600f8",
+                        "tertiary-container": "#dbdbdb",
+                        "surface": "#0d1515",
+                        "on-primary-fixed": "#002022",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "tertiary": "#f7f8f8",
+                        "surface-dim": "#0d1515",
+                        "inverse-surface": "#dce4e4",
+                        "outline": "#849495",
+                        "primary-container": "#00f2ff",
+                        "on-secondary-fixed": "#320047",
+                        "surface-container-lowest": "#080f10",
+                        "primary-fixed": "#74f5ff",
+                        "surface-variant": "#2e3637"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin": "32px",
+                        "container_max_width": "1440px",
+                        "grid_opacity": "0.05"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Space Grotesk"],
+                        "data-label": ["JetBrains Mono"],
+                        "body-main": ["Inter"],
+                        "h2": ["Space Grotesk"],
+                        "code-snippet": ["JetBrains Mono"],
+                        "h1": ["Space Grotesk"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["4rem", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-label": ["0.75rem", {"lineHeight": "1.5", "fontWeight": "500"}],
+                        "body-main": ["1rem", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h2": ["1.75rem", {"lineHeight": "1.3", "fontWeight": "500"}],
+                        "code-snippet": ["0.875rem", {"lineHeight": "1.4", "fontWeight": "400"}],
+                        "h1": ["2.5rem", {"lineHeight": "1.2", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 219, 231, 0.2);
+        }
+        .active-corner::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            width: 10px;
+            height: 10px;
+            border-top: 2px solid #00dbe7;
+            border-left: 2px solid #00dbe7;
+        }
+        .scan-line {
+            background: linear-gradient(to bottom, transparent, rgba(0, 219, 231, 0.05), transparent);
+            height: 2px;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .technical-grid {
+            background-image: radial-gradient(rgba(0, 219, 231, 0.08) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        .glow-border {
+            box-shadow: 0 0 8px rgba(0, 219, 231, 0.2), inset 0 0 4px rgba(0, 219, 231, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-main selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden min-h-screen technical-grid">
+<div class="scan-line"></div>
+<header class="fixed top-0 w-full z-50 border-b border-primary/20 bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_0_15px_rgba(0,219,231,0.2)] h-16">
+<div class="flex justify-between items-center w-full px-margin py-unit h-full max-w-container_max_width mx-auto">
+<div class="font-display-lg text-h2 text-primary tracking-tighter border-l-4 border-primary pl-4">ARCHITECT_OS_v1.0</div>
+<nav class="hidden md:flex gap-8 items-center h-full">
+<a class="font-data-label text-data-label uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">STATIONS</a>
+<a class="font-data-label text-data-label uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">CHRONICLES</a>
+<a class="font-data-label text-data-label uppercase tracking-widest text-primary border-b-2 border-primary pb-1 shadow-[0_4px_8px_-2px_rgba(0,219,231,0.5)]" href="#">PROTOCOL</a>
+<a class="font-data-label text-data-label uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">LABS</a>
+</nav>
+<button class="bg-primary/10 border border-primary px-4 py-2 font-data-label text-primary hover:bg-primary hover:text-on-primary transition-all duration-300 active:scale-95 glow-border">INITIALIZE_LINK</button>
+</div>
+</header>
+<main class="pt-24 pb-32 max-w-container_max_width mx-auto px-margin relative">
+<div class="absolute -top-10 -right-10 opacity-10 pointer-events-none select-none font-code-snippet text-[120px] leading-none text-primary">
+            PROTOCOL_09
+        </div>
+<section class="grid grid-cols-12 gap-gutter mb-24 items-start">
+<div class="col-span-12 md:col-span-8 space-y-gutter">
+<div class="flex items-center gap-4 mb-4">
+<span class="text-primary font-code-snippet">[SYSTEM_STATUS: ACTIVE]</span>
+<div class="h-[1px] flex-grow bg-primary/20"></div>
+<span class="text-primary/50 font-code-snippet">LOC: 37.7749° N, 122.4194° W</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary uppercase tracking-tighter">ARCHITECT_PROFILE.md</h1>
+<div class="glass-panel active-corner p-8 relative overflow-hidden">
+<div class="absolute top-4 right-4 text-primary opacity-30 font-code-snippet text-xs">SIZE: 1.2MB</div>
+<div class="space-y-6 font-body-main text-lg text-on-surface-variant leading-relaxed">
+<p>A digital architect specializing in high-integrity neural constructs and protocol-level interfaces. I design environments where complex data streams meet human intuition through precision engineering and geometric brutalism.</p>
+<p>My methodology revolves around the elimination of cognitive friction. By leveraging sub-millisecond visual responses and glassmorphic depth, I create digital sanctuaries for the modern developer.</p>
+<div class="flex items-center gap-8 pt-6 border-t border-primary/10">
+<div>
+<div class="font-data-label text-primary text-xs uppercase mb-1">XP_LEVEL</div>
+<div class="font-display-lg text-h1 text-on-surface">12_YEARS</div>
+</div>
+<div>
+<div class="font-data-label text-primary text-xs uppercase mb-1">CORE_OPERATIONS</div>
+<div class="font-display-lg text-h1 text-on-surface">UX/UI_SYNTH</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-4 space-y-gutter h-full">
+<div class="glass-panel p-6 space-y-6 flex flex-col h-full border-primary/40">
+<div class="flex items-center justify-between border-b border-primary/20 pb-4">
+<h2 class="font-data-label text-primary uppercase">Identity_Validation</h2>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div class="aspect-square w-full bg-surface-container-high relative flex items-center justify-center border border-primary/10">
+<img alt="Lead Architect" class="w-full h-full object-cover mix-blend-luminosity grayscale opacity-80" data-alt="A cinematic, high-contrast black and white portrait of a modern tech professional with a neutral expression. The lighting is dramatic and side-lit, emphasizing sharp facial features. The background is dark and minimalist with a subtle electronic overlay of scanning lines and data markers. The overall aesthetic is sleek, professional, and slightly futuristic, consistent with a high-end digital interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjzeZRPP1ocuKKOd-V-6gqU-2zeAbzwa8tOcHiQf1j-EEloUlIf21373YwhdF6EuO9oxDv9qMYX5dvnAJu7KGLmz64Sv3UUW36SDsPvNHL501gycYuV9ZiNR9KCRRz3kBoFWwFc4BjxaK_u5JNA9mBGgj5f3qc_pP6sEpmhxbhBR8u6AkhEyUP71UWUgXsATdn8GGOmqu_qorIurQALYeMcsJKYnQeRO9GR3kxzSYRBgGHyyp4WPiJSkGvKr_mpRMeFGDknafzsYZt"/>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+<div class="absolute top-2 left-2 flex gap-1">
+<div class="w-1 h-1 bg-primary"></div>
+<div class="w-1 h-1 bg-primary"></div>
+<div class="w-1 h-1 bg-primary"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-code-snippet">
+<span class="text-on-surface-variant">NAME:</span>
+<span class="text-primary">ELIAS_VANCE</span>
+</div>
+<div class="flex justify-between text-xs font-code-snippet">
+<span class="text-on-surface-variant">CLEARANCE:</span>
+<span class="text-primary">LEVEL_04</span>
+</div>
+<div class="flex justify-between text-xs font-code-snippet">
+<span class="text-on-surface-variant">STATUS:</span>
+<span class="text-secondary">UPLINK_STABLE</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-24">
+<div class="flex items-center gap-4 mb-8">
+<h2 class="font-display-lg text-h1 text-primary uppercase tracking-tight">System_Compatibility</h2>
+<div class="h-[1px] flex-grow bg-primary/20"></div>
+<div class="font-code-snippet text-xs text-primary/40">CALIBRATING_ARRAY...</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-unit">
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">token</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x01</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">Rust_Core</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[94%]"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">layers</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x02</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">React_Synth</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[98%]"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">terminal</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x03</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">Node_Thread</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[85%]"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">deployed_code</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x04</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">Kubernetes</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[72%]"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">database</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x05</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">PostgreSQL</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[88%]"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-4 aspect-square flex flex-col justify-between hover:bg-primary/10 transition-all cursor-crosshair group">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-xl">shield_with_heart</span>
+<span class="font-code-snippet text-[10px] text-primary opacity-50">0x06</span>
+</div>
+<div>
+<div class="font-data-label text-xs uppercase text-on-surface-variant group-hover:text-primary transition-colors">Security_Ops</div>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[82%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="grid grid-cols-12 gap-gutter items-stretch">
+<div class="col-span-12 lg:col-span-5 flex flex-col justify-between py-8">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary uppercase tracking-tight mb-4 leading-none">Establish_Uplink</h2>
+<p class="text-on-surface-variant font-body-main max-w-sm">Secure transmission channel for project inquiries and collaboration requests. High-priority signals are processed via primary node.</p>
+</div>
+<div class="space-y-4 font-code-snippet text-sm">
+<div class="flex items-center gap-3">
+<span class="text-primary">+</span>
+<span class="text-on-surface-variant">COMM_CHANNEL:</span>
+<span class="text-primary hover:underline cursor-pointer">VANCE@ARCHITECT_OS.NET</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-primary">+</span>
+<span class="text-on-surface-variant">ENCRYPTION:</span>
+<span class="text-primary">AES-256-GCM</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-primary">+</span>
+<span class="text-on-surface-variant">UPTIME:</span>
+<span class="text-primary">99.998%</span>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-7">
+<form class="glass-panel p-10 space-y-8 relative active-corner">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-2 relative group">
+<label class="font-data-label text-[10px] text-primary/60 uppercase tracking-widest block">SUBJECT_TAG</label>
+<input class="w-full bg-transparent border-b-2 border-primary/20 py-2 text-on-surface font-code-snippet focus:outline-none focus:border-primary transition-colors placeholder:text-primary/20" placeholder="INITIALIZE_COLLABORATION" type="text"/>
+<span class="absolute right-0 bottom-3 text-[10px] font-code-snippet text-primary/40 opacity-0 group-focus-within:opacity-100 transition-opacity">01</span>
+</div>
+<div class="space-y-2 relative group">
+<label class="font-data-label text-[10px] text-primary/60 uppercase tracking-widest block">UPLINK_EMAIL</label>
+<input class="w-full bg-transparent border-b-2 border-primary/20 py-2 text-on-surface font-code-snippet focus:outline-none focus:border-primary transition-colors placeholder:text-primary/20" placeholder="SENDER@DOMAIN.X" type="email"/>
+<span class="absolute right-0 bottom-3 text-[10px] font-code-snippet text-primary/40 opacity-0 group-focus-within:opacity-100 transition-opacity">02</span>
+</div>
+</div>
+<div class="space-y-2 relative group">
+<label class="font-data-label text-[10px] text-primary/60 uppercase tracking-widest block">ENCRYPTED_MESSAGE</label>
+<textarea class="w-full bg-transparent border-b-2 border-primary/20 py-2 text-on-surface font-code-snippet focus:outline-none focus:border-primary transition-colors resize-none placeholder:text-primary/20" placeholder="INPUT_DATA_STREAM_HERE..." rows="4"></textarea>
+<span class="absolute right-0 bottom-3 text-[10px] font-code-snippet text-primary/40 opacity-0 group-focus-within:opacity-100 transition-opacity">03</span>
+</div>
+<div class="flex justify-end">
+<button class="group relative px-8 py-3 bg-primary text-on-primary font-data-label font-bold uppercase tracking-[0.2em] hover:bg-surface-tint transition-all overflow-hidden" type="submit">
+<span class="relative z-10">BROADCAST_SIGNAL</span>
+<div class="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12"></div>
+</button>
+</div>
+</form>
+</div>
+</section>
+</main>
+<footer class="w-full border-t border-primary/10 bg-surface-container-lowest relative overflow-hidden">
+<div class="max-w-container_max_width mx-auto flex flex-col md:flex-row justify-between items-center px-margin py-8 gap-gutter relative z-10">
+<div class="font-data-label text-primary flex items-center gap-4">
+<span class="material-symbols-outlined text-sm">hub</span>
+                NEURAL_LINK_CONSTRUCT
+            </div>
+<div class="flex gap-8">
+<a class="font-code-snippet text-code-snippet text-on-tertiary-fixed-variant hover:text-primary transition-opacity" href="#">TERMINAL</a>
+<a class="font-code-snippet text-code-snippet text-on-tertiary-fixed-variant hover:text-primary transition-opacity" href="#">UPLINK</a>
+<a class="font-code-snippet text-code-snippet text-on-tertiary-fixed-variant hover:text-primary transition-opacity" href="#">SOURCE</a>
+<a class="font-code-snippet text-code-snippet text-on-tertiary-fixed-variant hover:text-primary transition-opacity" href="#">ENCRYPTION</a>
+</div>
+<div class="font-code-snippet text-code-snippet text-on-surface-variant opacity-50">
+                © 2024 NEURAL_LINK_CONSTRUCT. ALL RIGHTS RESERVED.
+            </div>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+</footer>
+</body></html>

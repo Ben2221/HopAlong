@@ -16,7 +16,6 @@ const SignUp = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "rider" as "rider" | "driver",
   });
 
   interface Errors {
@@ -62,8 +61,7 @@ const SignUp = () => {
       await signup({
         name: formData.name,
         email: formData.email,
-        password: formData.password,
-        role: formData.role
+        password: formData.password
       });
       navigate('/dashboard');
     } catch (err: any) {

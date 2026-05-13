@@ -65,7 +65,7 @@ const TermsOfService = () => {
               <p className="text-lg leading-relaxed">
                 Fares are calculated based on estimated distance and fuel costs. Users agree to use the integrated wallet 
                 system for fare splitting. HopAlong does not take a commission; 100% of the split fare goes to covering 
-                the driver's expenses.
+                the host's expenses.
               </p>
             </section>
 

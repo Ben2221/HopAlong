@@ -7,8 +7,10 @@ import { initSocket, getSocket, disconnectSocket } from "../services/socket";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "motion/react";
 import StatsCard from "../components/dashboard/StatsCard";
-import ServiceCard from "../components/dashboard/ServiceCard";
 import Map from "../components/Map";
+import PlaceAutocomplete from "../components/PlaceAutocomplete";
+import { usePlaceSuggestions } from "../hooks/usePlaceSuggestions";
+import { useRouteStore } from "../store/routeStore";
 
 interface Ride {
   _id: string;
@@ -16,6 +18,7 @@ interface Ride {
   dropoffLocation: { address: string };
   status: string;
   fare: number;
+  departureTime: string;
   createdAt: string;
 }
 
@@ -27,16 +30,29 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Driver specific state
+  // Hosting state
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<any>(null);
 
-  // Rider specific state
+  // Rider state
   const [availableRides, setAvailableRides] = useState<any[]>([]);
-  const [isAnonymous, setIsAnonymous] = useState(user?.isAnonymous || false);
   const [sosAlert, setSosAlert] = useState<any>(null);
 
   const [publicSettings, setPublicSettings] = useState<any>(null);
+
+  // Search state
+  const [searchFrom, setSearchFrom] = useState("");
+  const [searchTo, setSearchTo] = useState("");
+  const [searchDate, setSearchDate] = useState<Date | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearchMinimized, setIsSearchMinimized] = useState(false);
+
+  const { from: storeFrom, to: storeTo } = useRouteStore();
+
+  const { suggestions: fromSuggestions, isLoading: isLoadingFrom } = usePlaceSuggestions(searchFrom);
+  const { suggestions: toSuggestions, isLoading: isLoadingTo } = usePlaceSuggestions(searchTo);
 
   useEffect(() => {
     if (!user || !token) {
@@ -56,7 +72,7 @@ const Dashboard = () => {
     };
 
     const fetchAvailableRides = async () => {
-      if (user?.role === 'rider' || user?.role === 'admin') {
+      if (user?.role === 'student' || user?.role === 'admin') {
         try {
           const response = await api.get('/rides/available');
           setAvailableRides(response.data);
@@ -82,8 +98,8 @@ const Dashboard = () => {
     // Setup Socket
     const socket = initSocket(token);
 
-    if (user.role === 'driver') {
-      socket.on('new_ride_request', (data) => {
+    if (user.role === 'student') {
+      socket.on('new_ride_invite', (data) => {
         setIncomingRequest(data);
       });
 
@@ -92,11 +108,16 @@ const Dashboard = () => {
       });
     }
 
-    if (user.role === 'rider' || user.role === 'admin') {
+    if (user.role === 'student' || user.role === 'admin') {
       socket.on('ride_accepted', (data) => {
         navigate(`/rides/${data.rideId}`);
       });
-      
+
+      socket.on('new_ride_available', () => {
+        console.log("[Socket] New ride available, refreshing list...");
+        fetchAvailableRides();
+      });
+
       socket.on('sos_alert', (data) => {
         console.error('[SOS] RECEIVED EMERGENCY ALERT:', data);
         setSosAlert(data);
@@ -114,11 +135,11 @@ const Dashboard = () => {
     if (socket) {
       const newStatus = !isOnline;
       setIsOnline(newStatus);
-      socket.emit('driver_status', { isOnline: newStatus });
+      socket.emit('host_status', { isOnline: newStatus });
 
       if (newStatus && navigator.geolocation) {
         navigator.geolocation.watchPosition((position) => {
-          socket.emit('driver_location', {
+          socket.emit('host_location', {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
@@ -135,24 +156,54 @@ const Dashboard = () => {
     }
   };
 
-  const joinRide = async (rideId: string) => {
+  const joinRide = async (rideId: string, isFromSearch: boolean = false) => {
     try {
-      await api.post('/rides/join', { rideId });
+      const payload: any = { rideId };
+      
+      // If joining from search results, use the searched sub-route for proportional fare calculation
+      if (isFromSearch && storeFrom && storeTo) {
+        payload.pickupLocation = { lat: storeFrom.latitude, lng: storeFrom.longitude, address: storeFrom.name };
+        payload.dropoffLocation = { lat: storeTo.latitude, lng: storeTo.longitude, address: storeTo.name };
+      }
+
+      await api.post('/rides/join', payload);
       navigate(`/rides/${rideId}`);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to join ride");
     }
   };
 
-  const togglePrivacy = async () => {
+
+
+  const handleSearch = async () => {
+    if (!storeFrom || !storeTo) {
+      setError("Please select both pickup and destination");
+      return;
+    }
+    setIsSearching(true);
+    setShowSearchResults(true);
     try {
-      const newStatus = !isAnonymous;
-      await api.put('/api/user/privacy', { isAnonymous: newStatus });
-      setIsAnonymous(newStatus);
-      // Update store locally too
-      useAuthStore.getState().setUser({ ...user!, isAnonymous: newStatus });
-    } catch (err) {
-      console.error("Failed to update privacy", err);
+      const response = await api.get('/rides/available', {
+        params: {
+          pickupLat: storeFrom.latitude,
+          pickupLng: storeFrom.longitude,
+          dropoffLat: storeTo.latitude,
+          dropoffLng: storeTo.longitude,
+          date: searchDate?.toISOString()
+        }
+      });
+      // Filter out rides where the user is already a participant
+      const filtered = response.data.filter((r: any) =>
+        !r.riders.some((rider: any) =>
+          (typeof rider === 'string' && rider === user?.id) ||
+          (rider._id === user?.id)
+        )
+      );
+      setSearchResults(filtered);
+    } catch (err: any) {
+      setError("Search failed. Please try again.");
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -188,13 +239,13 @@ const Dashboard = () => {
                 <p className="font-bold text-red-100">User <span className="text-white">{sosAlert.userName}</span> has triggered an emergency for ride <span className="text-white">#{sosAlert.rideId.slice(-6)}</span></p>
               </div>
               <div className="relative z-10 flex gap-3">
-                <button 
+                <button
                   onClick={() => navigate(`/rides/${sosAlert.rideId}`)}
                   className="bg-white text-red-600 px-8 py-3 rounded-xl font-black shadow-lg hover:bg-gray-100 transition-all"
                 >
                   View Ride
                 </button>
-                <button 
+                <button
                   onClick={() => setSosAlert(null)}
                   className="bg-red-800/50 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-800 transition-all"
                 >
@@ -209,8 +260,8 @@ const Dashboard = () => {
         {publicSettings?.broadcastBanner?.isActive && (
           <motion.div
             className={`mb-8 p-4 rounded-2xl flex items-center gap-4 shadow-sm border-l-8 ${publicSettings.broadcastBanner.type === 'alert' ? 'bg-red-50 border-red-500 text-red-800' :
-                publicSettings.broadcastBanner.type === 'warning' ? 'bg-amber-50 border-amber-500 text-amber-800' :
-                  'bg-blue-50 border-blue-500 text-blue-800'
+              publicSettings.broadcastBanner.type === 'warning' ? 'bg-amber-50 border-amber-500 text-amber-800' :
+                'bg-blue-50 border-blue-500 text-blue-800'
               }`}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -226,53 +277,10 @@ const Dashboard = () => {
             <p className="font-bold text-sm md:text-base">{publicSettings.broadcastBanner.message}</p>
           </motion.div>
         )}
-        {/* Active Journeys Section */}
-        {activeRides.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
-                <Icon icon="mdi:map-marker-path" className="text-white text-xl" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900 tracking-tight">Active Journeys</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {activeRides.map(activeRide => (
-                <motion.div 
-                  key={activeRide._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gray-900 rounded-[40px] p-8 relative overflow-hidden shadow-2xl border-2 border-green-500/30"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-                  <div className="flex justify-between items-start mb-8">
-                    <div>
-                      <span className="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
-                        LIVE: {activeRide.status}
-                      </span>
-                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-3">Current Route</p>
-                      <h4 className="text-xl font-black text-white leading-tight mt-1">
-                        {activeRide.pickupLocation.address.split(',')[0]} → {activeRide.dropoffLocation.address.split(',')[0]}
-                      </h4>
-                    </div>
-                    <div className="bg-white/10 p-3 rounded-2xl text-white">
-                      <Icon icon="mdi:car-clock" className="text-2xl" />
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => navigate(`/rides/${activeRide._id}`)}
-                    className="w-full bg-green-500 hover:bg-green-400 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 transition-all flex items-center justify-center gap-3 group"
-                  >
-                    Resume Journey
-                    <Icon icon="mdi:arrow-right" className="group-hover:translate-x-2 transition-transform" />
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
+
 
         {/* ROLE BASED DASHBOARDS */}
-        {user.role === 'driver' ? (
+        {user.role === 'student' ? (
           /* DRIVER VIEW */
           <div className="space-y-8">
             <section className="relative h-[250px] rounded-[32px] overflow-hidden shadow-2xl group bg-gray-900">
@@ -281,8 +289,8 @@ const Dashboard = () => {
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/60 to-transparent" />
               <div className="absolute inset-0 p-8 flex flex-col justify-center">
-                <h2 className="text-3xl md:text-5xl font-black text-white mb-2">Driver Hub</h2>
-                <p className="text-yellow-400 font-bold">Help students commute and earn points.</p>
+                <h2 className="text-3xl md:text-5xl font-black text-white mb-2">Student Hub</h2>
+                <p className="text-yellow-400 font-bold">Share rides, save costs, and build community.</p>
               </div>
             </section>
 
@@ -294,7 +302,7 @@ const Dashboard = () => {
                       <Icon icon={isOnline ? "mdi:car-connected" : "mdi:car-off"} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-gray-900">Your Status: {isOnline ? 'ONLINE' : 'OFFLINE'}</h3>
+                      <h3 className="text-2xl font-black text-gray-900">Hosting Status: {isOnline ? 'ACTIVE' : 'INACTIVE'}</h3>
                       <p className="text-gray-500 font-medium">{isOnline ? 'Waiting for incoming requests...' : 'Ready to start? Go online now.'}</p>
                     </div>
                   </div>
@@ -362,102 +370,322 @@ const Dashboard = () => {
         ) : (
           /* RIDER VIEW */
           <div className="space-y-12">
-            <section className="relative h-[300px] md:h-[400px] rounded-[32px] overflow-hidden shadow-2xl group">
-              <div className="absolute inset-0 z-0">
-                <Map />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none z-10" />
-              <div className="absolute inset-0 p-8 flex flex-col justify-end z-20">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl pointer-events-auto">
-                  <h2 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">Where to, <br /><span className="text-yellow-400">Champ?</span></h2>
-                  <div className="relative group/input">
-                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                      <Icon icon="mdi:magnify" className="text-2xl text-gray-400 group-focus-within/input:text-yellow-400 transition-colors" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Enter destination..."
-                      readOnly
-                      onClick={() => navigate('/create-ride')}
-                      className="w-full h-16 pl-14 pr-6 bg-white rounded-2xl shadow-2xl text-lg font-medium outline-none cursor-pointer hover:bg-gray-50 transition-all"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <button onClick={() => navigate('/create-ride')} className="bg-yellow-400 text-amber-900 px-8 py-3 rounded-xl font-black shadow-lg hover:bg-yellow-500 transition-colors">Start Hopping</button>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </section>
+            <div className="space-y-12">
 
-            <section>
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Your Commute</h3>
-                <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100">
-                  <span className="text-xs font-black text-gray-400 uppercase">Incognito</span>
-                  <button onClick={togglePrivacy} className={`w-10 h-5 rounded-full transition-colors relative ${isAnonymous ? 'bg-yellow-400' : 'bg-gray-300'}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${isAnonymous ? 'left-5.5' : 'left-0.5'}`} />
-                  </button>
+              <section className="flex flex-col md:block relative h-auto md:h-[550px] rounded-[40px] shadow-2xl group border-4 border-white overflow-hidden bg-gray-900">
+                <div className="relative md:absolute md:inset-0 z-0 h-[300px] md:h-full">
+                  <Map rides={showSearchResults ? searchResults : availableRides} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none z-10 hidden md:block" />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <ServiceCard title="Offer a Ride" description="Share seats & save costs." icon="mdi:car-connected" primary onClick={() => navigate('/create-ride')} />
-                <ServiceCard title="Find a Ride" description="Join shared rides around you." icon="mdi:account-search" onClick={() => {
-                  const section = document.getElementById('available-rides');
-                  section?.scrollIntoView({ behavior: 'smooth' });
-                }} />
-                <ServiceCard title="Ride Later" description="Schedule for tomorrow." icon="mdi:calendar-clock" onClick={() => navigate('/create-ride')} />
-              </div>
-            </section>
-
-            {/* Available Shared Rides Grid */}
-            <section id="available-rides" className="scroll-mt-6">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
-                  <Icon icon="mdi:account-group" className="text-amber-900 text-xl" />
-                </div>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Active Hop-Alongs</h3>
-              </div>
-
-              {availableRides.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {availableRides.map(ride => (
-                    <motion.div key={ride._id} whileHover={{ y: -5 }} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex -space-x-2">
-                            {[1, 2, 3].slice(0, ride.riders.length).map(i => (
-                              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">U</div>
-                            ))}
-                          </div>
-                          <span className="text-[10px] font-black text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg uppercase tracking-tighter">{ride.maxRiders - ride.riders.length} Seats left</span>
+                
+                <div className="relative md:absolute md:inset-0 p-4 sm:p-8 flex flex-col justify-end z-20 bg-gray-900 md:bg-transparent">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: isSearchMinimized ? 0.95 : 1
+                    }}
+                    className={`max-w-4xl w-full pointer-events-auto bg-white/5 md:bg-white/10 backdrop-blur-xl p-5 sm:p-8 rounded-[24px] sm:rounded-[40px] border border-white/10 md:border-white/20 transition-all shadow-2xl ${isSearchMinimized ? 'opacity-60 hover:opacity-100' : ''}`}
+                  >
+                    {!isSearchMinimized && (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+                        <div>
+                          <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight leading-none">Find a Hop-Along</h2>
+                          <p className="text-gray-400 text-[10px] sm:text-sm font-bold uppercase tracking-[0.2em] mt-2">Campus Connectivity Hub</p>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><p className="font-bold text-gray-900 truncate">{ride.pickupLocation.address.split(',')[0]}</p></div>
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" /><p className="font-bold text-gray-900 truncate">{ride.dropoffLocation.address.split(',')[0]}</p></div>
-                        </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                          <div><p className="text-[10px] font-black text-gray-400 uppercase leading-none">Your Cost</p><p className="text-xl font-black text-green-600">₹{Math.round(ride.fare / (ride.riders.length + 1))}</p></div>
-                          <button onClick={() => joinRide(ride._id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-yellow-400 hover:text-amber-900 transition-all shadow-lg">Hop In</button>
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <button
+                            onClick={() => navigate('/create-ride')}
+                            className="flex-1 sm:flex-none bg-yellow-400 hover:bg-yellow-500 text-amber-900 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            <Icon icon="mdi:plus-circle" className="text-lg" />
+                            Host a Journey
+                          </button>
+                          <button
+                            onClick={() => setIsSearchMinimized(true)}
+                            className="w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center justify-center text-white transition-colors shadow-lg shrink-0"
+                            title="Minimize"
+                          >
+                            <Icon icon="mdi:chevron-down" className="text-2xl" />
+                          </button>
                         </div>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[32px] p-16 text-center">
-                  <Icon icon="mdi:car-search" className="text-5xl text-gray-300 mx-auto mb-4" />
-                  <h4 className="text-xl font-bold text-gray-700">No active rides found</h4>
-                  <p className="text-sm text-gray-400 mt-2">Check back in a few minutes or create your own!</p>
-                </div>
-              )}
-            </section>
+                    )}
 
-            <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatsCard label="Rides" value={rides.length} icon="mdi:car-multiple" />
-              <StatsCard label="Saved" value={`₹${rides.reduce((acc, r) => acc + r.fare, 0).toFixed(2)}`} icon="mdi:wallet" color="text-green-600" />
-              <StatsCard label="Eco Points" value="1,240" icon="mdi:leaf" color="text-emerald-500" />
-              <StatsCard label="Safe Journeys" value="100%" icon="mdi:shield-check" color="text-blue-500" />
-            </section>
+                    {!isSearchMinimized && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 sm:gap-4 relative z-10"
+                      >
+                        <div className="flex-1 relative w-full">
+                          <PlaceAutocomplete
+                            placeholder="From..."
+                            value={searchFrom}
+                            onChange={(v) => setSearchFrom(v)}
+                            suggestions={fromSuggestions}
+                            isLoading={isLoadingFrom}
+                            locationType="from"
+                            className="!bg-white !rounded-2xl"
+                            hideLabel
+                          />
+                        </div>
+                        <div className="flex-1 relative w-full">
+                          <PlaceAutocomplete
+                            placeholder="To..."
+                            value={searchTo}
+                            onChange={(v) => setSearchTo(v)}
+                            suggestions={toSuggestions}
+                            isLoading={isLoadingTo}
+                            locationType="to"
+                            className="!bg-white !rounded-2xl"
+                            hideLabel
+                          />
+                        </div>
+                        <div className="w-full lg:w-64 relative">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
+                            <Icon icon="mdi:calendar-clock" className="text-xl" />
+                          </div>
+                          <input
+                            type="datetime-local"
+                            onChange={(e) => setSearchDate(new Date(e.target.value))}
+                            className="w-full h-14 bg-white rounded-2xl pl-12 pr-4 text-gray-500 font-bold outline-none border-2 border-transparent focus:border-yellow-400 focus:text-gray-900 shadow-sm transition-colors"
+                          />
+                        </div>
+                        <button
+                          onClick={handleSearch}
+                          disabled={isSearching}
+                          className="w-full lg:w-auto bg-yellow-400 text-amber-900 h-14 px-8 rounded-2xl font-black shadow-xl hover:bg-yellow-500 transition-all flex items-center justify-center gap-3 shrink-0 active:scale-95"
+                        >
+                          {isSearching ? <Icon icon="mdi:loading" className="animate-spin text-2xl" /> : <Icon icon="mdi:magnify" className="text-2xl" />}
+                          <span className="lg:hidden">Search Rides</span>
+                        </button>
+                      </motion.div>
+                    )}
+
+                    {isSearchMinimized && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex flex-wrap items-center gap-6 text-white/90 text-sm font-black">
+                          <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl">
+                            <Icon icon="mdi:map-marker" className="text-yellow-400 text-lg" />
+                            {searchFrom || "Anywhere"}
+                          </div>
+                          <Icon icon="mdi:arrow-right-thick" className="text-yellow-400/50" />
+                          <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl">
+                            <Icon icon="mdi:map-marker-radius" className="text-red-400 text-lg" />
+                            {searchTo || "Destination"}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setIsSearchMinimized(false)}
+                          className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                        >
+                          <Icon icon="mdi:magnify" />
+                          Expand Search
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
+              </section>
+
+              <AnimatePresence>
+                {showSearchResults && (
+                  <motion.section
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-[40px] p-10 shadow-xl border border-gray-100"
+                  >
+                    <div className="flex items-center justify-between mb-10">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-100">
+                          <Icon icon="mdi:account-group" className="text-amber-900 text-2xl" />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black text-gray-900 tracking-tight">Available Hop-Alongs</h3>
+                          <p className="text-gray-400 text-sm font-bold">Pick your preferred ride for today</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowSearchResults(false)} className="bg-gray-100 hover:bg-gray-200 text-gray-500 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all">Clear</button>
+                    </div>
+
+                    {isSearching ? (
+                      <div className="flex flex-col items-center justify-center py-24 gap-6">
+                        <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Scanning campus routes...</p>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {searchResults.map(ride => (
+                          <motion.div
+                            key={ride._id}
+                            whileHover={{ y: -8 }}
+                            className="bg-white p-8 rounded-[40px] border-2 border-gray-50 shadow-sm hover:shadow-2xl hover:border-yellow-200 transition-all cursor-pointer group"
+                          >
+                            <div className="flex justify-between items-center mb-6">
+                              <div className="bg-yellow-50 text-yellow-700 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                                <Icon icon="mdi:clock-outline" className="text-lg" />
+                                {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                              <div className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
+                                <Icon icon="mdi:account-group" className="text-lg" />
+                                {ride.maxRiders - ride.riders.length} Seats
+                              </div>
+                            </div>
+                            <div className="space-y-4 mb-8">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-50 shrink-0" />
+                                <p className="text-lg font-bold text-gray-900 truncate">{ride.pickupLocation.address.split(',')[0]}</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-50 shrink-0" />
+                                <p className="text-lg font-bold text-gray-900 truncate">{ride.dropoffLocation.address.split(',')[0]}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => joinRide(ride._id, true)}
+                              className="w-full bg-gray-900 text-white py-5 rounded-[24px] text-sm font-black hover:bg-yellow-400 hover:text-amber-900 transition-all shadow-xl flex items-center justify-center gap-3 group-hover:scale-[1.02]"
+                            >
+                              Hop In <span className="opacity-20">|</span> Custom Route (Fare Proportioned)
+                            </button>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border-4 border-dashed border-gray-100 rounded-[40px] p-20 text-center">
+                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                          <Icon icon="mdi:car-off" className="text-5xl text-gray-200" />
+                        </div>
+                        <h4 className="text-2xl font-black text-gray-700">No rides found</h4>
+                        <p className="text-gray-400 font-bold mt-2">Try adjusting the time or create a new journey!</p>
+                        <button
+                          onClick={() => navigate('/create-ride', {
+                            state: {
+                              from: searchFrom,
+                              to: searchTo,
+                              date: searchDate,
+                              fromLoc: fromSuggestions.find(s => s.formatted === searchFrom),
+                              toLoc: toSuggestions.find(s => s.formatted === searchTo)
+                            }
+                          })}
+                          className="mt-10 bg-yellow-400 text-amber-900 px-10 py-4 rounded-[20px] font-black shadow-xl hover:bg-yellow-500 transition-all active:scale-95"
+                        >
+                          Create New Ride
+                        </button>
+                      </div>
+                    )}
+                  </motion.section>
+                )}
+              </AnimatePresence>
+
+              {/* Active Journeys Section moved here */}
+              {activeRides.length > 0 && (
+                <motion.section
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-12"
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
+                      <Icon icon="mdi:map-marker-path" className="text-white text-xl" />
+                    </div>
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Active Journeys</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {activeRides.map(activeRide => (
+                      <motion.div
+                        key={activeRide._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gray-900 rounded-[40px] p-8 relative overflow-hidden shadow-2xl border-2 border-green-500/30"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+                        <div className="flex justify-between items-start mb-8">
+                          <div>
+                            <span className="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
+                              LIVE: {activeRide.status}
+                            </span>
+                            <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-3">Current Route</p>
+                            <h4 className="text-xl font-black text-white leading-tight mt-1">
+                              {activeRide.pickupLocation.address.split(',')[0]} → {activeRide.dropoffLocation.address.split(',')[0]}
+                            </h4>
+                          </div>
+                          <div className="bg-white/10 p-3 rounded-2xl text-white">
+                            <Icon icon="mdi:car-clock" className="text-2xl" />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/rides/${activeRide._id}`)}
+                          className="w-full bg-green-500 hover:bg-green-400 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 transition-all flex items-center justify-center gap-3 group"
+                        >
+                          Resume Journey
+                          <Icon icon="mdi:arrow-right" className="group-hover:translate-x-2 transition-transform" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.section>
+              )}
+
+
+
+              {/* Available Shared Rides Grid */}
+              <section id="available-rides" className="scroll-mt-6">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
+                    <Icon icon="mdi:account-group" className="text-amber-900 text-xl" />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 tracking-tight">Available Hop-Alongs</h3>
+                </div>
+
+                {availableRides.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {availableRides.map(ride => (
+                      <motion.div key={ride._id} whileHover={{ y: -5 }} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex -space-x-2">
+                              {[1, 2, 3].slice(0, ride.riders.length).map(i => (
+                                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">U</div>
+                              ))}
+                            </div>
+                            <span className="text-[10px] font-black text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg uppercase tracking-tighter">{ride.maxRiders - ride.riders.length} Seats left</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                                <Icon icon="mdi:calendar-clock" className="text-sm" />
+                                {new Date(ride.departureTime).toLocaleDateString()} at {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><p className="font-bold text-gray-900 truncate">{ride.pickupLocation.address.split(',')[0]}</p></div>
+                            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" /><p className="font-bold text-gray-900 truncate">{ride.dropoffLocation.address.split(',')[0]}</p></div>
+                          </div>
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                            <div><p className="text-[10px] font-black text-gray-400 uppercase leading-none">Your Cost</p><p className="text-xl font-black text-green-600">₹{Math.round(ride.fare / (ride.riders.length + 1))}</p></div>
+                            <button onClick={() => joinRide(ride._id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-yellow-400 hover:text-amber-900 transition-all shadow-lg">Hop In</button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[32px] p-16 text-center">
+                    <Icon icon="mdi:car-search" className="text-5xl text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-xl font-bold text-gray-700">No active rides found</h4>
+                    <p className="text-sm text-gray-400 mt-2">Check back in a few minutes or create your own!</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatsCard label="Rides" value={rides.length} icon="mdi:car-multiple" />
+                <StatsCard label="Saved" value={`₹${rides.reduce((acc, r) => acc + (r.status === 'completed' ? r.fare : 0), 0).toFixed(0)}`} icon="mdi:wallet" color="text-green-600" />
+                <StatsCard label="Eco Points" value={rides.filter(r => r.status === 'completed').length * 50} icon="mdi:leaf" color="text-emerald-500" />
+                <StatsCard label="Safe Journeys" value={rides.length > 0 ? "100%" : "0%"} icon="mdi:shield-check" color="text-blue-500" />
+              </section>
+            </div>
           </div>
         )}
 
@@ -465,7 +693,7 @@ const Dashboard = () => {
         <section className="mt-16">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-black text-gray-900 tracking-tight">Recent Activity</h3>
-            <button 
+            <button
               onClick={() => navigate("/history")}
               className="text-yellow-600 font-bold text-sm hover:underline"
             >
@@ -494,7 +722,7 @@ const Dashboard = () => {
                     <div className="flex items-center gap-8 w-full sm:w-auto justify-between sm:justify-end">
                       <div className="text-right">
                         <p className="text-2xl font-black text-gray-900 leading-none">₹{ride.fare}</p>
-                        <p className="text-[10px] uppercase font-black text-gray-400 mt-2 tracking-widest">{user.role === 'driver' ? 'Revenue' : 'Wallet'}</p>
+                        <p className="text-[10px] uppercase font-black text-gray-400 mt-2 tracking-widest">{user.role === 'student' ? 'Revenue' : 'Wallet'}</p>
                       </div>
                       <span className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-xl tracking-widest ${ride.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{ride.status}</span>
                     </div>

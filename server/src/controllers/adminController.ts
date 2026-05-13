@@ -169,3 +169,43 @@ export const cancelRideAdmin = async (req: Request, res: Response) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+export const getReports = async (req: Request, res: Response) => {
+  try {
+    const completedRides = await Ride.find({ status: 'completed' });
+    
+    // Revenue Trends (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentRides = await Ride.find({ 
+      status: 'completed', 
+      createdAt: { $gte: sevenDaysAgo } 
+    }).sort({ createdAt: 1 });
+
+    const dailyRevenue = recentRides.reduce((acc: any, ride) => {
+      const day = new Date(ride.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
+      acc[day] = (acc[day] || 0) + (ride.fare || 0);
+      return acc;
+    }, {});
+
+    // ESG / Sustainability Metrics
+    const totalDistance = completedRides.reduce((sum, ride) => sum + 10, 0); // Approximation if distance not stored
+    const co2Saved = totalDistance * 0.2; // 0.2kg CO2 per km saved
+    const moneySaved = completedRides.length * 50; // Heuristic
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        revenueData: Object.entries(dailyRevenue).map(([name, value]) => ({ name, value })),
+        sustainability: {
+          co2Saved,
+          moneySaved,
+          totalDistance
+        }
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};

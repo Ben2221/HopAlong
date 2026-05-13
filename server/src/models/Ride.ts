@@ -3,7 +3,7 @@ import { IUser } from './User';
 
 export interface IRide extends Document {
   riders: (mongoose.Types.ObjectId | IUser)[];
-  driver?: mongoose.Types.ObjectId | IUser;
+  host?: mongoose.Types.ObjectId | IUser;
   maxRiders: number;
   isPublic: boolean;
   pickupLocation: {
@@ -18,6 +18,8 @@ export interface IRide extends Document {
   };
   status: 'pending' | 'accepted' | 'ongoing' | 'completed' | 'cancelled';
   fare: number;
+  departureTime: Date;
+  description?: string;
   riderSegments: {
     userId: mongoose.Types.ObjectId;
     pickupLocation: {
@@ -38,7 +40,7 @@ export interface IRide extends Document {
 
 const rideSchema = new Schema<IRide>({
   riders: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
-  driver: { type: Schema.Types.ObjectId, ref: 'User' },
+  host: { type: Schema.Types.ObjectId, ref: 'User' },
   maxRiders: { type: Number, default: 4 },
   isPublic: { type: Boolean, default: true },
   pickupLocation: {
@@ -57,6 +59,8 @@ const rideSchema = new Schema<IRide>({
     default: 'pending'
   },
   fare: { type: Number, required: true },
+  departureTime: { type: Date, required: true, default: Date.now },
+  description: { type: String },
   riderSegments: [{
     userId: { type: Schema.Types.ObjectId, ref: 'User' },
     pickupLocation: {
