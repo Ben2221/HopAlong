@@ -42,21 +42,21 @@ const TabNavigator = () => (
     })}
   >
     <Tab.Screen 
-      name="Home" 
+      name="Dashboard" 
       component={Dashboard} 
       options={{
         tabBarIcon: ({ color, size }) => <LayoutDashboard size={24} color={color} strokeWidth={2.5} />,
       }}
     />
     <Tab.Screen 
-      name="Activity" 
+      name="History" 
       component={History} 
       options={{
         tabBarIcon: ({ color, size }) => <HistoryIcon size={24} color={color} strokeWidth={2.5} />,
       }}
     />
     <Tab.Screen 
-      name="Inbox" 
+      name="Chat" 
       component={Chat} 
       options={{
         tabBarIcon: ({ color, size }) => <MessageSquare size={24} color={color} strokeWidth={2.5} />,

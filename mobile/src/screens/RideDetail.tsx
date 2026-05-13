@@ -242,7 +242,7 @@ const RideDetail = ({ route, navigation }: any) => {
             {(isHost || isRider) && (
               <TouchableOpacity 
                 style={[styles.chatBtn, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('Chat', { rideId: ride._id })}
+                onPress={() => navigation.navigate('Main', { screen: 'Chat', params: { rideId: ride._id } })}
               >
                 <MessageCircle size={20} color={colors.text} strokeWidth={2.5} />
                 <Text style={[styles.chatText, { color: colors.text }]}>Chat</Text>
