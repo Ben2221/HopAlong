@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Wallet, History, Shield, LogOut, Settings, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, Wallet, History, Shield, LogOut, Settings, ChevronRight, Lock } from 'lucide-react-native';
 import { useTheme } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
+import api from '../services/api';
+import { sendLocalNotification } from '../services/NotificationService';
+import { Bell } from 'lucide-react-native';
 
 const Profile = ({ navigation }: any) => {
   const { colors, isDark } = useTheme();
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -30,10 +33,20 @@ const Profile = ({ navigation }: any) => {
           <View style={[styles.avatar, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
             <Text style={[styles.avatarText, { color: colors.black }]}>{user?.name.charAt(0)}</Text>
           </View>
-          <Text style={[styles.name, { color: colors.text }]}>{user?.name}</Text>
-          <Text style={[styles.email, { color: colors.textMuted }]}>{user?.email}</Text>
-          <View style={[styles.roleBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.roleText, { color: colors.primary }]}>{user?.role || 'STUDENT'}</Text>
+          <View style={styles.profileInfo}>
+            <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
+            <View style={styles.roleRow}>
+              <View style={[styles.roleBadge, { backgroundColor: user?.role === 'admin' ? colors.danger + '20' : colors.primary + '20', borderColor: user?.role === 'admin' ? colors.danger + '40' : colors.primary + '40' }]}>
+                <Text style={[styles.roleText, { color: user?.role === 'admin' ? colors.danger : colors.primary }]}>{user?.role?.toUpperCase() || 'STUDENT'}</Text>
+              </View>
+              {user?.isAnonymous && (
+                <View style={[styles.anonBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Shield size={12} color={colors.textMuted} />
+                  <Text style={[styles.anonText, { color: colors.textMuted }]}>ANONYMOUS</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.userEmail, { color: colors.textMuted }]}>{user?.email}</Text>
           </View>
         </View>
 
@@ -47,7 +60,7 @@ const Profile = ({ navigation }: any) => {
             </View>
             <View style={styles.menuContent}>
               <Text style={[styles.menuLabel, { color: colors.text }]}>Wallet Balance</Text>
-              <Text style={[styles.menuValue, { color: colors.primary }]}>₹{user?.walletBalance || 0}</Text>
+              <Text style={[styles.menuValue, { color: colors.primary }]}>₹{(user?.walletBalance || 0).toFixed(2)}</Text>
             </View>
             <ChevronRight size={20} color={colors.textMuted} />
           </TouchableOpacity>
@@ -76,6 +89,36 @@ const Profile = ({ navigation }: any) => {
             <View style={styles.menuContent}>
               <Text style={[styles.menuLabel, { color: colors.text }]}>Safety & Support</Text>
               <Text style={[styles.menuSub, { color: colors.textMuted }]}>Help center & guidelines</Text>
+            </View>
+            <ChevronRight size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]} 
+            onPress={() => navigation.navigate('PrivacySecurity')}
+          >
+            <View style={[styles.iconBox, { backgroundColor: colors.success + '10' }]}>
+              <Lock size={20} color={colors.success} strokeWidth={2.5} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>Privacy & Security</Text>
+              <Text style={[styles.menuSub, { color: colors.textMuted }]}>
+                Mode: {user?.isAnonymous ? 'Anonymous' : 'Public'}
+              </Text>
+            </View>
+            <ChevronRight size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]} 
+            onPress={() => sendLocalNotification("Notification Test", "This is how HopAlong alerts will look on your device! 🚗💨")}
+          >
+            <View style={[styles.iconBox, { backgroundColor: colors.primary + '10' }]}>
+              <Bell size={20} color={colors.primary} strokeWidth={2.5} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>Test Push Notification</Text>
+              <Text style={[styles.menuSub, { color: colors.textMuted }]}>Try out the alert system</Text>
             </View>
             <ChevronRight size={20} color={colors.textMuted} />
           </TouchableOpacity>
@@ -145,27 +188,48 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '900',
   },
-  name: {
-    fontSize: 28,
-    fontWeight: '900',
-    marginBottom: 6,
-    letterSpacing: -1,
+  profileInfo: {
+    alignItems: 'center',
+    gap: 6,
   },
-  email: {
-    fontSize: 15,
+  userName: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  userEmail: {
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 16,
+    opacity: 0.7,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 4,
   },
   roleBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
   },
   roleText: {
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+  anonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  anonText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   menu: {
     gap: 16,

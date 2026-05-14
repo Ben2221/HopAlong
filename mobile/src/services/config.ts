@@ -5,8 +5,8 @@ const LOCAL_IP = '192.168.1.14';
 
 export const BASE_URL = __DEV__ 
   ? `http://${LOCAL_IP}:5000/api` 
-  : 'https://api.hopalong.benser.tech/api';
+  : 'https://hopalong-r0r9.onrender.com/api';
 
 export const SOCKET_URL = __DEV__
   ? `http://${LOCAL_IP}:5000`
-  : 'https://api.hopalong.benser.tech';
+  : 'https://hopalong-r0r9.onrender.com';

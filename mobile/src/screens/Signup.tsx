@@ -27,18 +27,29 @@ const Signup = ({ navigation }: any) => {
   const login = useAuthStore((state) => state.login);
 
   const handleSignup = async () => {
-    if (!name || !email || !password) {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedName || !trimmedEmail || !password) {
       setError('Please fill in all fields');
       return;
     }
-    if (!email.endsWith('@iiitkottayam.ac.in')) {
+    if (!trimmedEmail.endsWith('@iiitkottayam.ac.in')) {
        setError('Please use your IIITK email');
        return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
     }
     setLoading(true);
     setError('');
     try {
-      const response = await api.post('/auth/register', { name, email, password });
+      const response = await api.post('/auth/register', { 
+        name: trimmedName, 
+        email: trimmedEmail, 
+        password 
+      });
       const { user, token } = response.data;
       await login(user, token);
     } catch (err: any) {

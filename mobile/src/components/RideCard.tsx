@@ -51,7 +51,7 @@ const RideCard = ({ ride, onPress, isJoinable, onJoin }: RideCardProps) => {
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <View>
           <Text style={[styles.costLabel, { color: colors.textMuted }]}>FARE</Text>
-          <Text style={[styles.costValue, { color: colors.text }]}>₹{ride.fare}</Text>
+          <Text style={[styles.costValue, { color: colors.text }]}>₹{(ride.fare || 0).toFixed(2)}</Text>
         </View>
         {isJoinable ? (
           <TouchableOpacity 

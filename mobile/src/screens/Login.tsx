@@ -15,6 +15,7 @@ import { Mail, Lock, ArrowRight } from 'lucide-react-native';
 import { useTheme } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
+import Logo from '../components/Logo';
 
 const Login = ({ navigation }: any) => {
   const { colors, isDark } = useTheme();
@@ -49,12 +50,13 @@ const Login = ({ navigation }: any) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-            <Text style={[styles.logoText, { color: colors.black }]}>H</Text>
+        <View style={styles.titleContainer}>
+          <Logo size={60} />
+          <View style={{ marginTop: 24 }}>
+            <Text style={[styles.title, { color: colors.text }]}>Welcome</Text>
+            <Text style={[styles.titleAccent, { color: colors.primary }]}>Back</Text>
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>HopAlong</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Your Campus Ride Revolution</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Sign in to continue your journey with the student community.</Text>
         </View>
 
         <View style={styles.form}>
@@ -122,9 +124,7 @@ const Login = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}>
-           <Text style={[styles.footerText, { color: colors.textMuted }]}>Built for IIIT Kottayam Students</Text>
-        </View>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -139,37 +139,26 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 60,
-  },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '900',
+  titleContainer: {
+    marginBottom: 48,
   },
   title: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: '900',
     letterSpacing: -2,
+    lineHeight: 48,
+  },
+  titleAccent: {
+    fontSize: 48,
+    fontWeight: '900',
+    letterSpacing: -2,
+    lineHeight: 48,
   },
   subtitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    lineHeight: 22,
   },
   form: {
     gap: 24,
@@ -238,18 +227,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 12,
     borderRadius: 12,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    opacity: 0.5,
   },
 });
 

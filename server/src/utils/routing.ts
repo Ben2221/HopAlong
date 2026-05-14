@@ -48,6 +48,31 @@ export const calculateHaversineDistance = (
   return R * c;
 };
 
+export const getRoutePoints = async (
+  startLat: number,
+  startLng: number,
+  endLat: number,
+  endLng: number
+): Promise<any[]> => {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
+    const response = await axios.get(url);
+
+    if (response.data && response.data.routes && response.data.routes.length > 0) {
+      // GeoJSON returns [lng, lat]
+      return response.data.routes[0].geometry.coordinates.map((coord: any) => ({
+        latitude: coord[1],
+        longitude: coord[0],
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('OSRM Route Points Error:', error);
+    return [];
+  }
+};
+
 const deg2rad = (deg: number): number => {
   return deg * (Math.PI / 180);
 };

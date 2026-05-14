@@ -14,14 +14,17 @@ import {
 import Dashboard from '../screens/Dashboard';
 import Login from '../screens/Login';
 import Signup from '../screens/Signup';
-import ForgotPassword from '../screens/ForgotPassword';
 import RideDetail from '../screens/RideDetail';
+import ForgotPassword from '../screens/ForgotPassword';
+import ResetPassword from '../screens/ResetPassword';
 import Profile from '../screens/Profile';
 import CreateRide from '../screens/CreateRide';
 import Chat from '../screens/Chat';
 import History from '../screens/History';
 import Wallet from '../screens/Wallet';
 import SafetyGuidelines from '../screens/SafetyGuidelines';
+import PrivacySecurity from '../screens/PrivacySecurity';
+import SearchRides from '../screens/SearchRides';
 import { useAuthStore } from '../store/authStore';
 import { COLORS } from '../theme/colors';
 
@@ -34,11 +37,9 @@ const TabNavigator = () => (
       headerShown: false,
       tabBarShowLabel: false,
       tabBarStyle: styles.tabBar,
-      tabBarBackground: () => (
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-      ),
       tabBarActiveTintColor: COLORS.primary,
       tabBarInactiveTintColor: COLORS.textMuted,
+      tabBarHideOnKeyboard: true,
     })}
   >
     <Tab.Screen 
@@ -82,6 +83,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Signup" component={Signup} />
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="ResetPassword" component={ResetPassword} />
         </>
       ) : (
         <>
@@ -90,6 +92,8 @@ export const AppNavigator = () => {
           <Stack.Screen name="CreateRide" component={CreateRide} />
           <Stack.Screen name="Wallet" component={Wallet} />
           <Stack.Screen name="SafetyGuidelines" component={SafetyGuidelines} />
+          <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />
+          <Stack.Screen name="SearchRides" component={SearchRides} />
         </>
       )}
     </Stack.Navigator>
@@ -98,19 +102,16 @@ export const AppNavigator = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 32 : 24,
-    left: 24,
-    right: 24,
-    height: 64,
-    borderRadius: 32,
-    borderTopWidth: 0,
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
-    elevation: 0,
+    height: Platform.OS === 'ios' ? 88 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2C',
+    backgroundColor: '#121212',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
 });

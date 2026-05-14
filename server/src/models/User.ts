@@ -23,6 +23,7 @@ export interface IUser extends Document {
   isOnline: boolean;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  pushToken?: string;
   createdAt: Date;
 }
 
@@ -54,6 +55,7 @@ const userSchema = new Schema<IUser>({
   isOnline: { type: Boolean, default: false },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
+  pushToken: { type: String },
 }, { timestamps: true });
 
 userSchema.pre('save', async function() {

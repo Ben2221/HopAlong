@@ -48,6 +48,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
   } catch (error) {
+    console.error('Registration Error:', error);
     res.status(500).json({ message: 'Error registering user', error });
   }
 };
@@ -134,7 +135,8 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     await user.save();
 
     // Create reset URL
-    const resetUrl = `${req.get('origin')}/reset-password?token=${resetToken}`;
+    const frontendUrl = req.get('origin') || process.env.FRONTEND_URL || 'https://hopalong.iiitk.ac.in';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     try {
       await sendEmail({

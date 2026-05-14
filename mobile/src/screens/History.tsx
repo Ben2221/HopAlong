@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -19,18 +20,25 @@ const History = ({ navigation }: any) => {
   const [rides, setRides] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchHistory = async () => {
+    try {
+      const response = await api.get('/rides/history');
+      setRides(response.data);
+    } catch (err) {
+      console.error('History fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+    }, [])
+  );
+
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await api.get('/rides/history');
-        setRides(response.data);
-      } catch (err) {
-        console.error('History fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHistory();
+    // Initial fetch handled by useFocusEffect
   }, []);
 
   const totalSpent = rides.reduce((acc, r) => acc + (r.fare || 0), 0);
@@ -44,7 +52,7 @@ const History = ({ navigation }: any) => {
         </View>
         <View style={[styles.divider, { backgroundColor: colors.black }]} />
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.black }]}>₹{totalSpent}</Text>
+          <Text style={[styles.summaryValue, { color: colors.black }]}>₹{totalSpent.toFixed(0)}</Text>
           <Text style={[styles.summaryLabel, { color: colors.black }]}>Total Saved</Text>
         </View>
       </View>

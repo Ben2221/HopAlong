@@ -3,10 +3,10 @@ import {
   View, 
   Text, 
   TextInput, 
-  FlatList, 
   TouchableOpacity, 
   StyleSheet, 
-  ActivityIndicator 
+  ActivityIndicator,
+  ScrollView 
 } from 'react-native';
 import { MapPin, Search } from 'lucide-react-native';
 import api from '../services/api';
@@ -31,10 +31,11 @@ const PlaceAutocomplete = ({ placeholder, onSelect, iconColor }: Props) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const shouldSearch = React.useRef(true);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (query.length > 2) {
+      if (query.length > 2 && shouldSearch.current) {
         setLoading(true);
         try {
           const response = await api.post('/autocomplete', { address: query });
@@ -49,12 +50,14 @@ const PlaceAutocomplete = ({ placeholder, onSelect, iconColor }: Props) => {
         setSuggestions([]);
         setShowDropdown(false);
       }
+      shouldSearch.current = true;
     }, 500);
 
     return () => clearTimeout(timer);
   }, [query]);
 
   const handleSelect = (item: Suggestion) => {
+    shouldSearch.current = false;
     setQuery(item.formatted);
     setShowDropdown(false);
     onSelect(item);
@@ -77,11 +80,14 @@ const PlaceAutocomplete = ({ placeholder, onSelect, iconColor }: Props) => {
 
       {showDropdown && suggestions.length > 0 && (
         <View style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
+          <ScrollView 
+            style={{ maxHeight: 250 }} 
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
+            {suggestions.map((item, index) => (
               <TouchableOpacity 
+                key={index}
                 style={[styles.suggestionItem, { borderBottomColor: colors.border }]} 
                 onPress={() => handleSelect(item)}
               >
@@ -90,9 +96,8 @@ const PlaceAutocomplete = ({ placeholder, onSelect, iconColor }: Props) => {
                   {item.formatted}
                 </Text>
               </TouchableOpacity>
-            )}
-            keyboardShouldPersistTaps="handled"
-          />
+            ))}
+          </ScrollView>
         </View>
       )}
     </View>

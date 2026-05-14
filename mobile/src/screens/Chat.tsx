@@ -9,10 +9,12 @@ import {
   KeyboardAvoidingView, 
   Platform,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
+  ScrollView,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Send, MoreVertical, MessageSquare } from 'lucide-react-native';
+import { ChevronLeft, Send, MoreVertical, MessageSquare, X } from 'lucide-react-native';
 import { useTheme } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
@@ -27,17 +29,36 @@ const Chat = ({ route, navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const socket = getSocket();
   const flatListRef = useRef<FlatList>(null);
+  const [activeJourneys, setActiveJourneys] = useState<any[]>([]);
+  const [fetchingJourneys, setFetchingJourneys] = useState(false);
+  const [showRideInfo, setShowRideInfo] = useState(false);
+  const [currentRide, setCurrentRide] = useState<any>(null);
 
   useEffect(() => {
     if (!rideId) {
       setLoading(false);
+      fetchActiveJourneys();
       return;
     }
 
     const fetchMessages = async () => {
+      setLoading(true);
       try {
-        const response = await api.get(`/rides/${rideId}/chat`);
-        setMessages(response.data);
+        const [chatRes, rideRes] = await Promise.all([
+          api.get(`/chat/${rideId}`),
+          api.get(`/rides/${rideId}`)
+        ]);
+        
+        setCurrentRide(rideRes.data);
+        
+        const formattedMessages = (chatRes.data.messages || []).map((m: any) => ({
+          text: m.content,
+          senderId: m.senderId,
+          senderName: m.senderName,
+          timestamp: m.sentAt,
+          id: m.id
+        }));
+        setMessages(formattedMessages);
       } catch (err) {
         console.error('Chat fetch error:', err);
       } finally {
@@ -47,36 +68,44 @@ const Chat = ({ route, navigation }: any) => {
 
     fetchMessages();
 
-    if (socket) {
-      socket.emit('joinRideChat', rideId);
+    if (socket && rideId) {
+      socket.emit('join_ride_room', { rideId });
       
-      socket.on('newMessage', (message: any) => {
-        if (message.rideId === rideId) {
-          setMessages(prev => [...prev, message]);
-        }
+      socket.on('new_message', (message: any) => {
+        const formatted = {
+          text: message.content,
+          senderId: message.senderId,
+          senderName: message.senderName,
+          timestamp: message.sentAt,
+          id: message.id
+        };
+        setMessages(prev => [...prev, formatted]);
       });
     }
 
     return () => {
       if (socket) {
-        socket.emit('leaveRideChat', rideId);
-        socket.off('newMessage');
+        socket.off('new_message');
       }
     };
   }, [rideId, socket]);
 
+  const fetchActiveJourneys = async () => {
+    setFetchingJourneys(true);
+    try {
+      const response = await api.get('/rides/history');
+      const active = response.data.filter((r: any) => r.status !== 'completed' && r.status !== 'cancelled');
+      setActiveJourneys(active);
+    } catch (err) {
+      console.error('Failed to fetch active journeys:', err);
+    } finally {
+      setFetchingJourneys(false);
+    }
+  };
+
   const handleSend = () => {
-    if (!inputText.trim() || !socket) return;
-
-    const messageData = {
-      rideId,
-      text: inputText.trim(),
-      senderId: user?.id,
-      senderName: user?.name,
-      timestamp: new Date().toISOString(),
-    };
-
-    socket.emit('sendMessage', messageData);
+    if (!inputText.trim() || !socket || !rideId) return;
+    socket.emit('send_message', { rideId, content: inputText.trim() });
     setInputText('');
   };
 
@@ -108,25 +137,35 @@ const Chat = ({ route, navigation }: any) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity 
             style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            onPress={() => navigation.goBack()}
+            onPress={() => rideId ? navigation.setParams({ rideId: null }) : navigation.goBack()}
           >
             <ChevronLeft size={24} color={colors.text} strokeWidth={2.5} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-             <Text style={[styles.headerTitle, { color: colors.text }]}>Ride Chat</Text>
-             <View style={styles.headerStatus}>
-                <View style={[styles.activeDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.activeText, { color: colors.textMuted }]}>Active Group</Text>
-             </View>
+             <Text style={[styles.headerTitle, { color: colors.text }]}>
+               {rideId ? (currentRide?.dropoffLocation?.address?.split(',')[0] || 'Ride Chat') : 'My Chats'}
+             </Text>
+             {rideId && (
+               <View style={styles.headerStatus}>
+                  <View style={[styles.activeDot, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.activeText, { color: colors.textMuted }]}>Active Group</Text>
+               </View>
+             )}
           </View>
         </View>
-        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-           <MoreVertical size={20} color={colors.text} />
-        </TouchableOpacity>
+        {rideId && (
+          <TouchableOpacity 
+            style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setShowRideInfo(true)}
+          >
+             <MoreVertical size={20} color={colors.text} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -134,18 +173,54 @@ const Chat = ({ route, navigation }: any) => {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : !rideId ? (
-        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.emptyIconCircle, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-             <MessageSquare size={48} color={colors.primary} strokeWidth={1.5} />
+        <View style={styles.emptyContainer}>
+          <View style={styles.chatListHeader}>
+            <Text style={[styles.chatListTitle, { color: colors.text }]}>Active Chats</Text>
+            <TouchableOpacity onPress={fetchActiveJourneys}>
+              <Text style={{ color: colors.primary, fontWeight: '700' }}>Refresh</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Select a Journey</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Go to your active journeys and tap on the chat icon to start talking with your ride mates.</Text>
-          <TouchableOpacity 
-            style={[styles.exploreBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
-            onPress={() => navigation.navigate('Dashboard')}
-          >
-            <Text style={[styles.exploreBtnText, { color: colors.black }]}>View Active Journeys</Text>
-          </TouchableOpacity>
+
+          {fetchingJourneys ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          ) : activeJourneys.length > 0 ? (
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {activeJourneys.map((ride, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.rideChatItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+                  onPress={() => navigation.setParams({ rideId: ride._id })}
+                >
+                  <View style={[styles.rideChatIcon, { backgroundColor: colors.primary + '15' }]}>
+                    <MessageSquare size={24} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.rideChatTitle, { color: colors.text }]} numberOfLines={1}>
+                      To: {ride.dropoffLocation?.address?.split(',')[0]}
+                    </Text>
+                    <Text style={[styles.rideChatSub, { color: colors.textMuted }]}>
+                      {ride.riders?.length} participants • {ride.status}
+                    </Text>
+                  </View>
+                  <ChevronLeft size={20} color={colors.textMuted} style={{ transform: [{ rotate: '180deg' }] }} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.noChatsBox}>
+              <MessageSquare size={64} color={colors.textMuted} strokeWidth={1} />
+              <Text style={[styles.noChatsTitle, { color: colors.text }]}>No Active Chats</Text>
+              <Text style={[styles.noChatsSub, { color: colors.textMuted }]}>
+                Join or create a journey to start chatting with other riders.
+              </Text>
+              <TouchableOpacity 
+                style={[styles.exploreBtn, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Dashboard')}
+              >
+                <Text style={{ color: colors.black, fontWeight: '900' }}>Find a Ride</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       ) : (
         <FlatList
@@ -164,7 +239,7 @@ const Chat = ({ route, navigation }: any) => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <View style={[styles.inputContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <View style={[styles.inputWrapper, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
@@ -185,6 +260,55 @@ const Chat = ({ route, navigation }: any) => {
           </View>
         </KeyboardAvoidingView>
       )}
+
+      {/* Ride Info Modal */}
+      <Modal
+        visible={showRideInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRideInfo(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.infoModal, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Journey Details</Text>
+              <TouchableOpacity onPress={() => setShowRideInfo(false)}>
+                <X size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {currentRide && (
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>STATUS</Text>
+                  <Text style={[styles.infoValue, { color: colors.primary }]}>{currentRide.status?.toUpperCase()}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>FROM</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{currentRide.pickupLocation?.address}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>TO</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{currentRide.dropoffLocation?.address}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>PASSENGERS</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{currentRide.riders?.length} / {currentRide.maxRiders}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.viewRideBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    setShowRideInfo(false);
+                    navigation.navigate('RideDetail', { id: rideId });
+                  }}
+                >
+                  <Text style={{ color: colors.black, fontWeight: '900' }}>View on Map</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -327,42 +451,110 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
+    padding: 20,
   },
-  emptyIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
+  chatListHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
+    paddingHorizontal: 4,
   },
-  emptyTitle: {
-    fontSize: 24,
+  chatListTitle: {
+    fontSize: 28,
     fontWeight: '900',
-    marginBottom: 12,
+    letterSpacing: -1,
   },
-  emptySubtitle: {
+  rideChatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    gap: 16,
+  },
+  rideChatIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rideChatTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  rideChatSub: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  noChatsBox: {
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  noChatsTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  noChatsSub: {
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,
-    fontWeight: '600',
   },
   exploreBtn: {
     paddingHorizontal: 24,
     paddingVertical: 14,
-    borderRadius: 20,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    borderRadius: 18,
   },
-  exploreBtnText: {
-    fontSize: 15,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  infoModal: {
+    borderRadius: 32,
+    borderWidth: 1.5,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
     fontWeight: '900',
+  },
+  infoContent: {
+    gap: 20,
+  },
+  infoRow: {
+    marginBottom: 16,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  viewRideBtn: {
+    paddingVertical: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+    marginTop: 12,
   },
 });
 

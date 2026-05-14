@@ -11,7 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { 
   ChevronLeft, 
   MessageCircle, 
@@ -26,6 +26,7 @@ import {
 import { useTheme } from '../theme/colors';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import { getSocket } from '../services/socket';
 
 const DARK_MAP_STYLE = [
   { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
@@ -44,6 +45,7 @@ const RideDetail = ({ route, navigation }: any) => {
   const [ride, setRide] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const socket = getSocket();
 
   const fetchRide = async () => {
     try {
@@ -56,14 +58,65 @@ const RideDetail = ({ route, navigation }: any) => {
     }
   };
 
+  const [routePoints, setRoutePoints] = useState<any[]>([]);
+
   useEffect(() => {
     fetchRide();
+    if (socket && id) {
+      socket.on('emergency_status', (data: any) => {
+        Alert.alert(
+          "🚨 EMERGENCY SOS 🚨",
+          "An SOS has been triggered for this ride! Please check the map or contact passengers immediately.",
+          [{ text: "OK", style: "destructive" }]
+        );
+      });
+
+      return () => {
+        socket.off('emergency_status');
+      };
+    }
   }, [id]);
+
+  useEffect(() => {
+    if (ride && ride.pickupLocation && ride.dropoffLocation) {
+      fetchRoute();
+    }
+  }, [ride]);
+
+  const fetchRoute = async () => {
+    try {
+      const response = await api.get('/rides/route', {
+        params: {
+          startLat: ride.pickupLocation.coordinates[1],
+          startLng: ride.pickupLocation.coordinates[0],
+          endLat: ride.dropoffLocation.coordinates[1],
+          endLng: ride.dropoffLocation.coordinates[0],
+        }
+      });
+      setRoutePoints(response.data);
+    } catch (err) {
+      console.error('Route fetch error:', err);
+    }
+  };
 
   const handleJoin = async () => {
     setActionLoading(true);
+    const { passengerPickup, passengerDropoff } = route.params || {};
+    
     try {
-      await api.post(`/rides/${id}/join`);
+      await api.post('/rides/join', { 
+        rideId: id,
+        pickupLocation: passengerPickup ? {
+          lat: passengerPickup.lat,
+          lng: passengerPickup.lon,
+          address: passengerPickup.formatted
+        } : null,
+        dropoffLocation: passengerDropoff ? {
+          lat: passengerDropoff.lat,
+          lng: passengerDropoff.lon,
+          address: passengerDropoff.formatted
+        } : null
+      });
       Alert.alert('Success', 'You have joined the journey!');
       fetchRide();
     } catch (err: any) {
@@ -76,7 +129,7 @@ const RideDetail = ({ route, navigation }: any) => {
   const handleLeave = async () => {
     setActionLoading(true);
     try {
-      await api.post(`/rides/${id}/leave`);
+      await api.post('/rides/leave', { rideId: id });
       Alert.alert('Success', 'You have left the journey.');
       fetchRide();
     } catch (err: any) {
@@ -154,6 +207,24 @@ const RideDetail = ({ route, navigation }: any) => {
               </View>
             </Marker>
           )}
+          {ride.pickupLocation?.coordinates && ride.dropoffLocation?.coordinates && (
+            routePoints.length > 0 ? (
+            <Polyline
+              coordinates={routePoints}
+              strokeColor={colors.primary}
+              strokeWidth={4}
+            />
+          ) : (
+            <Polyline
+              coordinates={[
+                { latitude: ride.pickupLocation.coordinates[1], longitude: ride.pickupLocation.coordinates[0] },
+                { latitude: ride.dropoffLocation.coordinates[1], longitude: ride.dropoffLocation.coordinates[0] }
+              ]}
+              strokeColor={colors.primary}
+              strokeWidth={4}
+              lineDashPattern={[5, 5]}
+            />
+          ))}
         </MapView>
         <SafeAreaView style={styles.headerButtons} edges={['top']}>
           <TouchableOpacity 
@@ -176,7 +247,7 @@ const RideDetail = ({ route, navigation }: any) => {
           </View>
           <View style={styles.fareContainer}>
             <Text style={[styles.fareLabel, { color: colors.textMuted }]}>EST. FARE</Text>
-            <Text style={[styles.fareValue, { color: colors.primary }]}>₹{ride.fare}</Text>
+            <Text style={[styles.fareValue, { color: colors.primary }]}>₹{(ride.fare || 0).toFixed(2)}</Text>
           </View>
         </View>
 
@@ -214,9 +285,13 @@ const RideDetail = ({ route, navigation }: any) => {
               return (
                 <View key={i} style={[styles.riderItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                   <View style={[styles.riderAvatar, { backgroundColor: colors.primary + '20' }]}>
-                    <Text style={[styles.riderInitial, { color: colors.primary }]}>{rider.name?.charAt(0) || 'U'}</Text>
+                    <Text style={[styles.riderInitial, { color: colors.primary }]}>
+                      {(rider.isAnonymous ? rider.pseudonym : rider.name)?.charAt(0) || 'U'}
+                    </Text>
                   </View>
-                  <Text style={[styles.riderName, { color: colors.text }]} numberOfLines={1}>{rider.name || 'Anonymous'}</Text>
+                  <Text style={[styles.riderName, { color: colors.text }]} numberOfLines={1}>
+                    {rider.isAnonymous ? rider.pseudonym : rider.name}
+                  </Text>
                   {rId === hostId && (
                      <View style={[styles.hostLabel, { backgroundColor: colors.primary }]}>
                         <Text style={[styles.hostLabelText, { color: colors.black }]}>HOST</Text>
@@ -235,10 +310,31 @@ const RideDetail = ({ route, navigation }: any) => {
       {!isCompleted && (
         <View style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.actionTop}>
-            <TouchableOpacity style={[styles.sosBtn, { backgroundColor: colors.danger }]}>
-              <Shield size={20} color={colors.white} strokeWidth={2.5} />
-              <Text style={[styles.sosText, { color: colors.white }]}>SOS</Text>
-            </TouchableOpacity>
+            {(isHost || isRider) && (
+              <TouchableOpacity 
+                style={[styles.sosBtn, { backgroundColor: colors.danger }]}
+                onPress={() => {
+                  Alert.alert(
+                    "EMERGENCY SOS",
+                    "This will alert the admin and all passengers. Are you sure?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "TRIGGER SOS", 
+                        style: "destructive",
+                        onPress: () => {
+                          const socket = getSocket();
+                          socket?.emit('sos_trigger', { rideId: id });
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                <Shield size={20} color={colors.white} strokeWidth={2.5} />
+                <Text style={[styles.sosText, { color: colors.white }]}>SOS</Text>
+              </TouchableOpacity>
+            )}
             {(isHost || isRider) && (
               <TouchableOpacity 
                 style={[styles.chatBtn, { backgroundColor: colors.cardBg, borderColor: colors.border }]}

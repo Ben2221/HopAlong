@@ -5,6 +5,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
+import * as NotificationService from './src/services/NotificationService';
+import * as Notifications from 'expo-notifications';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -26,6 +28,52 @@ export default function App() {
     }
     prepare();
   }, []);
+
+  // Notification Setup
+  const setPushToken = useAuthStore(state => state.setPushToken);
+  const syncPushToken = useAuthStore(state => state.syncPushToken);
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      NotificationService.registerForPushNotificationsAsync().then(token => {
+        if (token) {
+          setPushToken(token);
+          syncPushToken();
+        }
+      });
+
+      const notificationListener = NotificationService.addNotificationReceivedListener(notification => {
+        console.log('Notification Received:', notification);
+      });
+
+      // Also listen to socket events and trigger local notifications for testing in Expo Go
+      import('./src/services/socket').then(module => {
+        const socket = module.getSocket();
+        if (socket) {
+          socket.on('sos_alert', (data: any) => {
+            NotificationService.sendLocalNotification(
+              "🚨 EMERGENCY SOS!",
+              `${data.userName} has triggered an SOS alert nearby!`,
+              data
+            );
+          });
+        }
+      });
+
+      const responseListener = NotificationService.addNotificationResponseReceivedListener(response => {
+        console.log('Notification Tapped:', response);
+        const data = response.notification.request.content.data;
+        // Navigation logic can be added here if needed, 
+        // but AppNavigator might need a ref or use a global navigation service.
+      });
+
+      return () => {
+        NotificationService.removeNotificationSubscription(notificationListener);
+        NotificationService.removeNotificationSubscription(responseListener);
+      };
+    }
+  }, [isAuthenticated]);
 
   if (!isReady) {
     return (

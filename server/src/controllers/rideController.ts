@@ -3,7 +3,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../utils/authMiddleware';
 import { Ride } from '../models/Ride';
 import { calculateDistance } from '../utils/haversine';
-import { getRoadDistance } from '../utils/routing';
+import { getRoadDistance, getRoutePoints } from '../utils/routing';
 import { GlobalSettings } from '../models/GlobalSettings';
 
 export const getHistory = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -256,5 +256,26 @@ export const leaveRide = async (req: AuthRequest, res: Response): Promise<void> 
     res.json({ message: 'Left ride successfully', ride });
   } catch (error) {
     res.status(500).json({ message: 'Error leaving ride', error });
+  }
+};
+
+export const getRoute = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { startLat, startLng, endLat, endLng } = req.query;
+    if (!startLat || !startLng || !endLat || !endLng) {
+      res.status(400).json({ message: 'Missing coordinates' });
+      return;
+    }
+
+    const points = await getRoutePoints(
+      Number(startLat),
+      Number(startLng),
+      Number(endLat),
+      Number(endLng)
+    );
+
+    res.json(points);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching route points', error });
   }
 };

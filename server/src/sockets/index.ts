@@ -4,11 +4,13 @@ import { User } from '../models/User';
 import { Ride } from '../models/Ride';
 import { Message } from '../models/Message';
 import { Transaction } from '../models/Transaction';
+import { sendEmail } from '../utils/emailService';
+import { sendPushNotification, sendMultiplePushNotifications } from '../services/notificationService';
 import { calculateDistance } from '../utils/haversine';
 import { getRoadDistance } from '../utils/routing';
 
-// Store connected users: socketId -> userId
-const connectedUsers = new Map<string, string>();
+// Store connected users: userId -> { socketId, role }
+const connectedUsers = new Map<string, { socketId: string, role: string }>();
 // Store drivers current location in memory for fast lookup
 const hostsLocation = new Map<string, { lat: number, lng: number }>();
 
@@ -30,7 +32,7 @@ export const setupSocket = (io: Server) => {
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.user.userId;
     const role = socket.data.user.role;
-    connectedUsers.set(userId, socket.id);
+    connectedUsers.set(userId, { socketId: socket.id, role });
     
     console.log(`User connected: ${userId} (${role})`);
 
@@ -146,7 +148,8 @@ export const setupSocket = (io: Server) => {
         const user = await User.findById(userId);
         if (user) {
           for (const host of onlineStudents) {
-            const hostSocketId = connectedUsers.get(host._id.toString());
+            const hostData = connectedUsers.get(host._id.toString());
+            const hostSocketId = hostData?.socketId;
             if (hostSocketId) {
               io.to(hostSocketId).emit('new_ride_invite', {
                 rideId: newRide._id,
@@ -156,6 +159,16 @@ export const setupSocket = (io: Server) => {
                 riderId: userId,
                 riderName: user.isAnonymous ? user.pseudonym : user.name
               });
+            }
+
+            // PUSH NOTIFICATION to host
+            if (host.pushToken) {
+              sendPushNotification(
+                host.pushToken,
+                "New Ride Request! 🚗",
+                `${user.isAnonymous ? user.pseudonym : user.name} is looking for a ride to ${data.dropoff.address.split(',')[0]}`,
+                { rideId: newRide._id, type: 'ride_invite' }
+              );
             }
           }
         }
@@ -181,8 +194,9 @@ export const setupSocket = (io: Server) => {
         const roomName = `ride_${ride._id}`;
         socket.join(roomName);
 
-        ride.riders.forEach(r => {
-          const riderSocketId = connectedUsers.get(r.toString());
+        ride.riders.forEach(async (r: any) => {
+          const riderData = connectedUsers.get(r.toString());
+          const riderSocketId = riderData?.socketId;
           if (riderSocketId) {
             const riderSocket = io.sockets.sockets.get(riderSocketId);
             if (riderSocket) riderSocket.join(roomName);
@@ -191,6 +205,17 @@ export const setupSocket = (io: Server) => {
               hostId: userId,
               hostLocation: hostsLocation.get(userId)
             });
+          }
+
+          // PUSH NOTIFICATION to rider
+          const riderUser = await User.findById(r);
+          if (riderUser?.pushToken) {
+            sendPushNotification(
+              riderUser.pushToken,
+              "Ride Accepted! ✅",
+              "A host has accepted your ride request. You can now track them on the map.",
+              { rideId: ride._id, type: 'ride_accepted' }
+            );
           }
         });
         
@@ -285,22 +310,91 @@ export const setupSocket = (io: Server) => {
         const ride = await Ride.findById(data.rideId);
         if (!user || !ride) return;
 
-        console.log(`[SOS] EMERGENCY TRIGGERED by ${user.name} for ride ${data.rideId}`);
+        console.log(`[SOS] Broadcasting SOS to all users (global) and specifically logging for admin trace`);
 
-        // Broadcast to EVERYONE connected
-        io.emit('sos_alert', {
+        // Explicitly target admins to ensure they receive the SOS alert
+        const sosPayload = {
           rideId: data.rideId,
           userId: user._id,
           userName: user.isAnonymous ? user.pseudonym : user.name,
           location: ride.pickupLocation,
           timestamp: new Date()
+        };
+
+        // Broadcast to EVERYONE connected
+        io.emit('sos_alert', sosPayload);
+
+        // Explicitly notify each online admin via their specific socket ID as a fallback
+        connectedUsers.forEach((data, uid) => {
+          if (data.role === 'admin') {
+            io.to(data.socketId).emit('sos_alert', sosPayload);
+            console.log(`[SOS] Explicitly sent to admin: ${uid}`);
+          }
         });
+
+        // EMAIL NOTIFICATION to admin
+        try {
+          await sendEmail({
+            email: 'bensavio2221@gmail.com', // System Administrator
+            subject: `🚨 EMERGENCY SOS ALERT: ${user.name}`,
+            message: `EMERGENCY ALERT TRIGGERED!\n\nUser: ${user.name} (${user.email})\nRide ID: ${data.rideId}\nPickup: ${ride.pickupLocation.address}\nDropoff: ${ride.dropoffLocation.address}\nTime: ${new Date().toLocaleString()}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 4px solid #dc2626; border-radius: 20px; background-color: #fef2f2;">
+                <h1 style="color: #dc2626; text-align: center;">🚨 EMERGENCY SOS ALERT</h1>
+                <p style="font-size: 18px; color: #1f2937;">A student has triggered an SOS alert in the HopAlong app.</p>
+                
+                <div style="background-color: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                  <p><strong>User:</strong> ${user.isAnonymous ? user.pseudonym + ' (Anonymous)' : user.name}</p>
+                  <p><strong>Email:</strong> ${user.email}</p>
+                  <p><strong>Ride ID:</strong> ${data.rideId}</p>
+                  <p><strong>Pickup:</strong> ${ride.pickupLocation.address}</p>
+                  <p><strong>Dropoff:</strong> ${ride.dropoffLocation.address}</p>
+                </div>
+
+                <div style="text-align: center;">
+                  <a href="https://hopalong.vercel.app/admin" style="background-color: #dc2626; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">GO TO ADMIN COMMAND CENTER</a>
+                </div>
+              </div>
+            `
+          });
+          console.log(`[SOS] Email sent to admin`);
+        } catch (emailErr) {
+          console.error(`[SOS] Failed to send email alert`, emailErr);
+        }
+
+        console.log(`[SOS] Global broadcast emitted. Ride: ${data.rideId}, User: ${user.name}`);
 
         // Also notify the specific ride room with high severity
         io.to(`ride_${data.rideId}`).emit('emergency_status', {
           message: `${user.isAnonymous ? user.pseudonym : user.name} has triggered an SOS! Emergency services and campus security are being notified.`,
           severity: 'high'
         });
+
+        // PUSH NOTIFICATION to all admins and ride participants
+        const pushTargets = new Set<string>();
+        // Add participants
+        for (const rId of ride.riders) {
+          const r = await User.findById(rId);
+          if (r?.pushToken) pushTargets.add(r.pushToken);
+        }
+        if (ride.host) {
+          const h = await User.findById(ride.host);
+          if (h?.pushToken) pushTargets.add(h.pushToken);
+        }
+        // Add admins
+        const admins = await User.find({ role: 'admin' });
+        admins.forEach(a => {
+          if (a.pushToken) pushTargets.add(a.pushToken);
+        });
+
+        if (pushTargets.size > 0) {
+          sendMultiplePushNotifications(
+            Array.from(pushTargets),
+            "🚨 EMERGENCY SOS!",
+            `${user.isAnonymous ? user.pseudonym : user.name} has triggered an SOS alert!`,
+            { rideId: ride._id, type: 'sos_alert' }
+          );
+        }
       } catch (err) {
         console.error('[Socket] Error in SOS:', err);
       }

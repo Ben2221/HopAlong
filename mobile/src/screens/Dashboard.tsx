@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -18,7 +19,8 @@ import {
   Plus, 
   History as HistoryIcon,
   Bell,
-  Settings
+  Settings,
+  Search
 } from 'lucide-react-native';
 import { useTheme, COLORS } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
@@ -64,8 +66,14 @@ const Dashboard = ({ navigation }: any) => {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
   useEffect(() => {
-    fetchData();
+    // Initial fetch handled by useFocusEffect
     if (token) {
       const socket = initSocket(token);
       socket.on('ride_update', fetchData);
@@ -103,11 +111,20 @@ const Dashboard = ({ navigation }: any) => {
         </View>
       </View>
 
+      {/* Search Bar Trigger */}
+      <TouchableOpacity 
+        style={[styles.searchBar, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+        onPress={() => navigation.navigate('SearchRides')}
+      >
+        <Search size={20} color={colors.primary} strokeWidth={2.5} />
+        <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>Where are you going?</Text>
+      </TouchableOpacity>
+
       {/* Stats Row */}
       <View style={styles.statsRow}>
         <StatsCard 
           label="Balance" 
-          value={`₹${user?.walletBalance || 0}`} 
+          value={`₹${(user?.walletBalance || 0).toFixed(2)}`} 
           icon={Wallet} 
           onPress={() => navigation.navigate('Wallet')}
         />
@@ -166,7 +183,7 @@ const Dashboard = ({ navigation }: any) => {
     </View>
   );
 
-  const activeRides = rides.filter(r => r.status === 'active' || r.status === 'pending');
+  const activeRides = rides.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
 
   if (isLoading) {
     return (
@@ -181,8 +198,30 @@ const Dashboard = ({ navigation }: any) => {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
       <FlatList
-        data={activeRides.length > 0 ? activeRides : availableRides.slice(0, 5)}
-        ListHeaderComponent={renderHeader}
+        data={availableRides}
+        ListHeaderComponent={() => (
+          <>
+            {renderHeader()}
+            {activeRides.length > 0 && (
+              <View style={styles.activeSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Ongoing Journeys</Text>
+                </View>
+                {activeRides.map(item => (
+                  <View key={item._id} style={styles.rideItemContainer}>
+                    <RideCard 
+                      ride={item} 
+                      onPress={() => navigation.navigate('RideDetail', { id: item._id })} 
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Journeys</Text>
+            </View>
+          </>
+        )}
         renderItem={({ item }) => (
           <View style={styles.rideItemContainer}>
             <RideCard 
@@ -191,23 +230,20 @@ const Dashboard = ({ navigation }: any) => {
             />
           </View>
         )}
-        ListFooterComponent={() => (
-           <View style={{ height: 100 }}>
-             {activeRides.length === 0 && availableRides.length > 5 && (
-               <TouchableOpacity 
-                 style={[styles.moreBtn, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
-               >
-                 <Text style={[styles.moreText, { color: colors.primary }]}>Discover More</Text>
-               </TouchableOpacity>
-             )}
-           </View>
-        )}
+        ListFooterComponent={() => <View style={{ height: 100 }} />}
         keyExtractor={(item) => item._id}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          !isLoading && availableRides.length === 0 ? (
+            <View style={[styles.emptyState, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No available journeys found near you.</Text>
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -243,6 +279,25 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     gap: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    marginTop: 24,
+    marginBottom: 8,
+    gap: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+  },
+  searchPlaceholder: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   iconBtn: {
     width: 44,
@@ -323,6 +378,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  activeSection: {
+    marginBottom: 24,
+  },
+  emptyState: {
+    padding: 40,
+    borderRadius: 32,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  emptyText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

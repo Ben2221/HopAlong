@@ -12,21 +12,51 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Users, Info, Calendar, Car } from 'lucide-react-native';
+import { ChevronLeft, Users, Info, Calendar, Car, Clock, MapPin } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme, COLORS } from '../theme/colors';
 import api from '../services/api';
 import PlaceAutocomplete from '../components/PlaceAutocomplete';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { getSocket, initSocket } from '../services/socket';
 import { useAuthStore } from '../store/authStore';
 
 const CreateRide = ({ navigation }: any) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { token } = useAuthStore();
   const [from, setFrom] = useState<any>(null);
   const [to, setTo] = useState<any>(null);
   const [maxRiders, setMaxRiders] = useState('4');
+  const [departureTime, setDepartureTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [routePoints, setRoutePoints] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (from && to) {
+      fetchRoute();
+    } else {
+      setRoutePoints([]);
+    }
+  }, [from, to]);
+
+  const fetchRoute = async () => {
+    try {
+      const response = await api.get('/rides/route', {
+        params: {
+          startLat: from.lat,
+          startLng: from.lon,
+          endLat: to.lat,
+          endLng: to.lon,
+        }
+      });
+      setRoutePoints(response.data);
+    } catch (err) {
+      console.error('Route fetch error:', err);
+    }
+  };
 
   useEffect(() => {
     const socket = getSocket() || initSocket(token || "");
@@ -34,6 +64,7 @@ const CreateRide = ({ navigation }: any) => {
     const handleSuccess = (data: { rideId: string }) => {
       console.log("Ride creation success:", data);
       setIsSubmitting(false);
+      Alert.alert("Success", "Ride request created! Searching for hosts...");
       navigation.navigate('RideDetail', { id: data.rideId });
     };
 
@@ -61,6 +92,7 @@ const CreateRide = ({ navigation }: any) => {
     setIsSubmitting(true);
     
     try {
+      console.log("[CreateRide] Fetching estimate...");
       // 1. Get fare estimate
       const response = await api.post('/rides/estimate', {
         pickupLocation: { lat: from.lat, lng: from.lon },
@@ -68,21 +100,23 @@ const CreateRide = ({ navigation }: any) => {
       });
 
       const fare = response.data.fare;
+      console.log("[CreateRide] Fare estimated:", fare);
 
       // 2. Initialize socket and emit request
       const socket = getSocket() || initSocket(token || "");
       
+      console.log("[CreateRide] Emitting request_ride...");
       socket.emit('request_ride', {
         pickup: { lat: from.lat, lng: from.lon, address: from.formatted },
         dropoff: { lat: to.lat, lng: to.lon, address: to.formatted },
         fare,
         isPublic: true,
         maxRiders: parseInt(maxRiders),
-        departureTime: new Date() // For now, immediate
+        departureTime: departureTime
       });
 
     } catch (err: any) {
-      console.error("Create ride error:", err);
+      console.error("[CreateRide] Catch block error:", err);
       Alert.alert("Error", err.response?.data?.message || "Failed to initiate ride creation.");
       setIsSubmitting(false);
     }
@@ -92,6 +126,51 @@ const CreateRide = ({ navigation }: any) => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle="light-content" />
       
+      <View style={styles.mapContainer}>
+        <MapView
+          style={styles.map}
+          customMapStyle={isDark ? DARK_MAP_STYLE : []}
+          region={{
+            latitude: from?.lat || to?.lat || 9.75,
+            longitude: from?.lon || to?.lon || 76.65,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+        >
+          {from && (
+            <Marker coordinate={{ latitude: from.lat, longitude: from.lon }} title="Pickup">
+              <View style={[styles.marker, { backgroundColor: colors.primary }]}>
+                <Car size={14} color={colors.black} />
+              </View>
+            </Marker>
+          )}
+          {to && (
+            <Marker coordinate={{ latitude: to.lat, longitude: to.lon }} title="Destination">
+              <View style={[styles.marker, { backgroundColor: colors.success }]}>
+                <MapPin size={14} color={colors.black} />
+              </View>
+            </Marker>
+          )}
+          {routePoints.length > 0 ? (
+            <Polyline
+              coordinates={routePoints}
+              strokeColor={colors.primary}
+              strokeWidth={4}
+            />
+          ) : from && to && (
+            <Polyline
+              coordinates={[
+                { latitude: from.lat, longitude: from.lon },
+                { latitude: to.lat, longitude: to.lon }
+              ]}
+              strokeColor={colors.primary}
+              strokeWidth={4}
+              lineDashPattern={[5, 5]}
+            />
+          )}
+        </MapView>
+      </View>
+
       <View style={styles.header}>
         <TouchableOpacity 
           style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -136,10 +215,24 @@ const CreateRide = ({ navigation }: any) => {
 
             <View style={styles.row}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={[styles.label, { color: colors.textMuted }]}>DEPARTURE TIME</Text>
+                <TouchableOpacity 
+                  style={[styles.selectionRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Clock size={20} color={colors.primary} strokeWidth={2.5} />
+                  <Text style={[styles.selectionText, { color: colors.text }]}>
+                    {departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Calendar size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={[styles.label, { color: colors.textMuted }]}>MAX RIDERS</Text>
                 <View style={[styles.selectionRow, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                   <Users size={20} color={colors.primary} strokeWidth={2.5} />
-                  <Text style={[styles.selectionText, { color: colors.text }]}>{maxRiders} Seats</Text>
+                  <Text style={[styles.selectionText, { color: colors.text }]}>{maxRiders}</Text>
                   <View style={styles.counterRow}>
                     <TouchableOpacity 
                       onPress={() => setMaxRiders(Math.max(1, parseInt(maxRiders) - 1).toString())}
@@ -157,6 +250,19 @@ const CreateRide = ({ navigation }: any) => {
                 </View>
               </View>
             </View>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={departureTime}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  setShowTimePicker(false);
+                  if (selectedDate) setDepartureTime(selectedDate);
+                }}
+              />
+            )}
 
             <View style={[styles.infoBox, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
               <Info size={20} color={colors.primary} strokeWidth={2.5} />
@@ -186,9 +292,32 @@ const CreateRide = ({ navigation }: any) => {
   );
 };
 
+const DARK_MAP_STYLE = [
+  { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
+  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#757575" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#212121" }] },
+  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#121212" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] },
+  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#2c2c2c" }] }
+];
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  mapContainer: {
+    height: 200,
+    width: '100%',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  marker: {
+    padding: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#000',
   },
   header: {
     flexDirection: 'row',

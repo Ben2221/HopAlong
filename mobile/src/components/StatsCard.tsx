@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../theme/colors';
 
 interface StatsCardProps {
@@ -7,14 +7,15 @@ interface StatsCardProps {
   value: string | number;
   icon: any;
   color?: string;
+  onPress?: () => void;
 }
 
-const StatsCard = ({ label, value, icon: Icon, color }: StatsCardProps) => {
+const StatsCard = ({ label, value, icon: Icon, color, onPress }: StatsCardProps) => {
   const { colors } = useTheme();
   const themeColor = color || colors.primary;
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+  const Content = (
+    <>
       <View style={[styles.iconContainer, { backgroundColor: themeColor + '15' }]}>
         <Icon size={22} color={themeColor} strokeWidth={2.5} />
       </View>
@@ -22,6 +23,24 @@ const StatsCard = ({ label, value, icon: Icon, color }: StatsCardProps) => {
         <Text style={[styles.value, { color: colors.text }]}>{value}</Text>
         <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
       </View>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity 
+        style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {Content}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+      {Content}
     </View>
   );
 };
